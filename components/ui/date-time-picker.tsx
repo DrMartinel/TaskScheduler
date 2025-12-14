@@ -137,7 +137,10 @@ export function DateTimePicker({
             onSelect={handleDateSelect}
             disabled={(date) => {
               if (minDate) {
-                return date < minDate
+                // Compare dates only (ignore time for date selection)
+                const minDateOnly = new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate())
+                const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+                return dateOnly < minDateOnly
               }
               return false
             }}
