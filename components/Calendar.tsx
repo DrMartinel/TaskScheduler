@@ -359,37 +359,12 @@ export default function Calendar({ todos }: CalendarProps) {
               {/* Schedule Area */}
               <div className="flex-1 relative">
                 {/* Hour containers for borders only */}
-                {hours.map((hour) => {
-                  const isCurrentHour = currentTimePos !== null && Math.floor(currentTimePos) === hour;
-                  const currentMinute = currentTime.getMinutes();
-                  const currentHour = currentTime.getHours();
-                  const isCurrentTime = isCurrentHour && currentHour === hour;
-
-                  return (
-                    <div
-                      key={hour}
-                      className="h-16 sm:h-20 border-b border-gray-100 dark:border-gray-800 relative z-0 pointer-events-none"
-                    >
-                      {/* Current time indicator */}
-                      {isCurrentTime && (
-                        <div
-                          className="absolute left-0 right-0 z-30 flex items-center pointer-events-auto"
-                          style={{
-                            top: `${(currentMinute / 60) * 100}%`
-                          }}
-                        >
-                          <div className="flex items-center w-full">
-                            <div className="w-2 h-2 rounded-full bg-red-500 mr-2"></div>
-                            <div className="flex-1 h-0.5 bg-red-500"></div>
-                            <span className="ml-2 text-xs font-medium text-red-600 dark:text-red-400 bg-white dark:bg-gray-900 px-1.5 py-0.5 rounded">
-                              {formatTime(currentTime)}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {hours.map((hour) => (
+                  <div
+                    key={hour}
+                    className="h-16 sm:h-20 border-b border-gray-100 dark:border-gray-800 relative z-0 pointer-events-none"
+                  />
+                ))}
 
                 {/* Tasks rendered in a single container spanning all hours */}
                 <div className="absolute inset-0 z-20 pointer-events-none">
@@ -438,6 +413,47 @@ export default function Calendar({ todos }: CalendarProps) {
                     );
                   })}
                 </div>
+
+                {/* Current time indicator - separate container to ensure it's above tasks */}
+                {currentTimePos !== null && viewMode === 'day' && (() => {
+                  const today = new Date();
+                  const isToday = today.toDateString() === currentDate.toDateString();
+                  if (!isToday) return null;
+
+                  const currentMinute = currentTime.getMinutes();
+                  const currentHour = currentTime.getHours();
+                  
+                  return (
+                    <div
+                      className="absolute inset-0 z-50 pointer-events-none"
+                    >
+                      <div
+                        className="absolute left-0 right-0 flex items-center pointer-events-auto"
+                        style={{
+                          top: `${((currentHour * 60 + currentMinute) / (24 * 60)) * 100}%`
+                        }}
+                      >
+                        <div className="flex items-center w-full">
+                          {/* Animated dot with shadow */}
+                          <div className="relative flex-shrink-0 animate-pulse">
+                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
+                            <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-75"></div>
+                          </div>
+                          
+                          {/* Line with gradient - starts from dot center, same animation */}
+                          <div className="flex-1 h-0.5 bg-gradient-to-r from-red-500 via-red-400 to-transparent relative -ml-1.5 animate-pulse">
+                            <div className="absolute inset-0 bg-red-500/30 blur-sm"></div>
+                          </div>
+                          
+                          {/* Time badge with better styling */}
+                          <span className="ml-3 flex-shrink-0 text-xs font-semibold text-white bg-red-500 dark:bg-red-600 px-2 py-1 rounded-md shadow-md border border-red-600 dark:border-red-700 whitespace-nowrap">
+                            {formatTime(currentTime)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           ) : (

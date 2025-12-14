@@ -101,7 +101,7 @@ export default function AddTodo() {
           <span className="sr-only">Add new todo</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] sm:w-auto sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Add New Task</DialogTitle>
           <DialogDescription>
@@ -125,8 +125,8 @@ export default function AddTodo() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="w-full min-w-0 space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-full overflow-hidden">
+              <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Start Time
                 </label>
@@ -136,13 +136,15 @@ export default function AddTodo() {
                   onChange={(e) => setStartTime(e.target.value)}
                   min={getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation"
+                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation max-w-full box-border"
                   style={{
                     fontSize: '16px', // Prevents zoom on iOS Safari
+                    width: '100%',
+                    maxWidth: '100%',
                   }}
                 />
               </div>
-              <div className="w-full min-w-0 space-y-2">
+              <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   End Time
                 </label>
@@ -152,9 +154,11 @@ export default function AddTodo() {
                   onChange={(e) => setEndTime(e.target.value)}
                   min={startTime || getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation"
+                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation max-w-full box-border"
                   style={{
                     fontSize: '16px', // Prevents zoom on iOS Safari
+                    width: '100%',
+                    maxWidth: '100%',
                   }}
                 />
               </div>
