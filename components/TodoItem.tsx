@@ -111,17 +111,12 @@ export default function TodoItem({ todo }: TodoItemProps) {
       {/* Header with time info */}
       {hasTimeInfo && (
         <div className="flex items-start gap-3 mb-3">
-          <div className={`flex-shrink-0 w-5 h-5 rounded-full border-2 mt-0.5 ${
-            todo.completed
-              ? 'bg-green-500 border-green-600'
-              : 'border-white'
-          }`}>
-            {todo.completed && (
-              <svg className="w-full h-full text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            )}
-          </div>
+          <Checkbox
+            checked={todo.completed}
+            onCheckedChange={handleToggle}
+            disabled={isPending}
+            className="w-5 h-5 mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-blue-600 flex-shrink-0"
+          />
           <div className="flex-1 min-w-0">
             <h3 className={`font-semibold text-white text-base sm:text-lg mb-1.5 ${
               todo.completed ? 'line-through' : ''
@@ -155,11 +150,32 @@ export default function TodoItem({ todo }: TodoItemProps) {
               )}
             </div>
           </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={handleDelete}
+              disabled={isPending}
+              className="text-white hover:bg-white/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed p-2 touch-manipulation"
+              aria-label="Delete todo"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4 sm:h-5 sm:w-5"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
       {/* Main Todo Item */}
-      <div className={`flex items-center gap-2 sm:gap-3 ${hasTimeInfo ? 'bg-white/10 dark:bg-black/20 rounded-lg p-2' : ''}`}>
+      <div className={`flex items-center gap-2 sm:gap-3 ${hasTimeInfo ? '' : ''}`}>
         {!hasTimeInfo && (
           <>
             {hasSubtasks && (
@@ -221,23 +237,11 @@ export default function TodoItem({ todo }: TodoItemProps) {
           </span>
         )}
         
-        <div className="flex items-center gap-2">
-          {hasTimeInfo && (
-            <Checkbox
-              checked={todo.completed}
-              onCheckedChange={handleToggle}
-              disabled={isPending}
-              className="w-5 h-5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:text-blue-600"
-            />
-          )}
+        {!hasTimeInfo && (
           <button
             onClick={handleDelete}
             disabled={isPending}
-            className={`px-2 py-2 sm:px-3 sm:py-2 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 touch-manipulation hover:scale-105 ${
-              hasTimeInfo
-                ? 'text-white hover:bg-white/20'
-                : 'text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-            }`}
+            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed p-2 flex-shrink-0 touch-manipulation"
             aria-label="Delete todo"
           >
             <svg
@@ -253,7 +257,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
               />
             </svg>
           </button>
-        </div>
+        )}
       </div>
 
       {/* Subtasks */}
