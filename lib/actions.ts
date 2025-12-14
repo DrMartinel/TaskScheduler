@@ -8,6 +8,7 @@ export async function addTodo(formData: FormData) {
   const text = formData.get('text') as string;
   const startTime = formData.get('start_time') as string;
   const endTime = formData.get('end_time') as string;
+  const note = formData.get('note') as string;
   const shouldBreakdown = formData.get('should_breakdown') === 'true';
   
   if (!text || !text.trim()) {
@@ -46,7 +47,8 @@ export async function addTodo(formData: FormData) {
       console.log('[Actions] Breaking down task:', text.trim());
       console.log('[Actions] Start time:', startTimeISO);
       console.log('[Actions] End time:', endTimeISO);
-      const subtasks = await breakDownTask(text.trim(), startTimeISO, endTimeISO);
+      console.log('[Actions] Note:', note || '(none)');
+      const subtasks = await breakDownTask(text.trim(), startTimeISO, endTimeISO, note || null);
       console.log('[Actions] Received', subtasks.length, 'subtasks');
       
       if (subtasks.length > 0 && mainTodo) {

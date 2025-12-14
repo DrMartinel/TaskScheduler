@@ -102,11 +102,6 @@ export default function NotificationSettings() {
         silent: false,
       });
 
-      // Auto-close notification after 5 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 5000);
-
       // Handle click event on notification
       notification.onclick = (event) => {
         event.preventDefault();

@@ -97,25 +97,39 @@ export default function TaskNotifications() {
             }
             
             // Parse scheduled_time (HH:MM format)
-            const [hours, minutes] = todo.scheduled_time.split(':').map(Number);
-            if (!isNaN(hours) && !isNaN(minutes)) {
-              baseDate.setHours(hours, minutes, 0, 0);
-              taskStartTime = baseDate;
+            const timeParts = todo.scheduled_time.split(':');
+            if (timeParts.length >= 2) {
+              const hours = parseInt(timeParts[0], 10);
+              const minutes = parseInt(timeParts[1], 10);
+              
+              if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+                // Set the time on the base date
+                baseDate.setHours(hours, minutes, 0, 0);
+                taskStartTime = baseDate;
+                
+                // If the time has already passed today and we're using today's date, try tomorrow
+                if (!parent?.start_time && taskStartTime.getTime() < now.getTime()) {
+                  baseDate.setDate(baseDate.getDate() + 1);
+                  taskStartTime = baseDate;
+                }
+              }
             }
           }
 
           if (!taskStartTime) return;
 
           // Check if task starts between now and 30 seconds from now
-          // Allow a 5-second window to account for timing variations
+          // Expand window for mobile devices (check every 5 seconds, so need wider window)
           const timeUntilStart = taskStartTime.getTime() - now.getTime();
           
+          // Expanded window: 20-40 seconds to account for mobile timing and 5-second check interval
           if (
-            timeUntilStart >= 25000 && // At least 25 seconds away
-            timeUntilStart <= 35000 && // At most 35 seconds away
+            timeUntilStart >= 20000 && // At least 20 seconds away
+            timeUntilStart <= 40000 && // At most 40 seconds away
             !notifiedTasksRef.current.has(taskId)
           ) {
             // Show notification
+            console.log(`[Notifications] Triggering notification for ${todo.parent_id ? 'subtask' : 'task'}: ${todo.text}, time until start: ${Math.round(timeUntilStart / 1000)}s`);
             showNotification(todo, taskStartTime);
             notifiedTasksRef.current.add(taskId);
           }
@@ -134,8 +148,8 @@ export default function TaskNotifications() {
     // Check immediately
     checkUpcomingTasks();
 
-    // Check every 5 seconds for accurate timing
-    checkIntervalRef.current = setInterval(checkUpcomingTasks, 5000);
+    // Check more frequently for better mobile support (every 3 seconds)
+    checkIntervalRef.current = setInterval(checkUpcomingTasks, 3000);
 
     return () => {
       if (checkIntervalRef.current) {
@@ -147,12 +161,14 @@ export default function TaskNotifications() {
   const showNotification = (todo: Todo, taskStartTime?: Date) => {
     // Double-check permission before showing notification
     if (!isNotificationSupported) {
+      console.warn('[Notifications] Notifications not supported');
       return;
     }
 
     // Check current permission (it might have changed)
     const currentPermission = Notification.permission;
     if (currentPermission !== 'granted') {
+      console.warn('[Notifications] Permission not granted:', currentPermission);
       setPermission(currentPermission);
       return;
     }
@@ -171,21 +187,21 @@ export default function TaskNotifications() {
     const prefix = isSubtask ? 'Subtask: ' : '';
 
     try {
+      const notificationBody = `${prefix}${todo.text}${timeString ? ` at ${timeString}` : ''}`;
+      console.log(`[Notifications] Creating notification: ${notificationBody}`);
+      
       // Create notification using the Notifications Web API
       // Reference: https://developer.mozilla.org/en-US/docs/Web/API/Notification
       const notification = new Notification('Task Starting Soon!', {
-        body: `${prefix}${todo.text}${timeString ? ` at ${timeString}` : ''}`,
+        body: notificationBody,
         icon: '/favicon.ico',
         badge: '/favicon.ico',
         tag: `task-${todo.id}`, // Prevent duplicate notifications with the same tag
-        requireInteraction: false, // Notification will auto-close
+        requireInteraction: false,
         silent: false, // Allow notification sounds
       });
 
-      // Auto-close notification after 10 seconds
-      setTimeout(() => {
-        notification.close();
-      }, 10000);
+      console.log(`[Notifications] Notification created successfully for ${isSubtask ? 'subtask' : 'task'}: ${todo.text}`);
 
       // Handle click event on notification
       notification.onclick = (event) => {
@@ -196,15 +212,15 @@ export default function TaskNotifications() {
 
       // Handle error event
       notification.onerror = (error) => {
-        console.error('Notification error:', error);
+        console.error(`[Notifications] Notification error for ${isSubtask ? 'subtask' : 'task'} "${todo.text}":`, error);
       };
 
       // Handle close event (optional, for logging)
       notification.onclose = () => {
-        // Notification was closed
+        console.log(`[Notifications] Notification closed for ${isSubtask ? 'subtask' : 'task'}: ${todo.text}`);
       };
     } catch (error) {
-      console.error('Error creating notification:', error);
+      console.error(`[Notifications] Error creating notification for ${isSubtask ? 'subtask' : 'task'} "${todo.text}":`, error);
     }
   };
 

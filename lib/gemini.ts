@@ -25,7 +25,8 @@ export interface SubtaskBreakdown {
 export async function breakDownTask(
   taskText: string,
   startTime?: string | null,
-  endTime?: string | null
+  endTime?: string | null,
+  note?: string | null
 ): Promise<SubtaskBreakdown[]> {
   const apiKey = process.env.GEMINI_API_KEY;
   
@@ -147,9 +148,15 @@ export async function breakDownTask(
       timeContext = `\n\nTask End Time: ${endFormatted}\n\nBreak down the task working backwards from this end time.`;
     }
 
+    // Add note context if provided
+    let noteContext = '';
+    if (note && note.trim()) {
+      noteContext = `\n\nImportant Note: ${note.trim()}\n\nPlease consider this note when breaking down the task. For example, if the note mentions travel time, include that in your breakdown.`;
+    }
+
     const prompt = `Break down the following task into smaller sequential subtasks with specific times.
 
-Task: "${taskText}"${timeContext}
+Task: "${taskText}"${timeContext}${noteContext}
 
 Return a JSON object with a "subtasks" array. Each subtask must have:
 - text: A clear, actionable subtask description
@@ -165,7 +172,7 @@ Example response format:
   ]
 }
 
-Ensure times are realistic, sequential, and fit within the provided time range if specified.`;
+Ensure times are realistic, sequential, and fit within the provided time range if specified. Consider any notes provided when creating the breakdown.`;
 
       console.log('[Gemini] Sending request to Gemini...');
       

@@ -10,6 +10,7 @@ export default function AddTodo() {
   const [text, setText] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [note, setNote] = useState('');
   const [shouldBreakdown, setShouldBreakdown] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -22,6 +23,7 @@ export default function AddTodo() {
     formData.append('text', text.trim());
     if (startTime) formData.append('start_time', startTime);
     if (endTime) formData.append('end_time', endTime);
+    if (note) formData.append('note', note.trim());
     formData.append('should_breakdown', shouldBreakdown.toString());
 
     startTransition(async () => {
@@ -29,6 +31,7 @@ export default function AddTodo() {
       setText('');
       setStartTime('');
       setEndTime('');
+      setNote('');
       setIsExpanded(false);
     });
   };
@@ -88,10 +91,10 @@ export default function AddTodo() {
         </div>
 
         {isExpanded && (
-          <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <div className="space-y-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div className="w-full min-w-0 space-y-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                   Start Time
                 </label>
                 <Input
@@ -100,11 +103,14 @@ export default function AddTodo() {
                   onChange={(e) => setStartTime(e.target.value)}
                   min={getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full"
+                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation"
+                  style={{
+                    fontSize: '16px', // Prevents zoom on iOS Safari
+                  }}
                 />
               </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <div className="w-full min-w-0 space-y-1.5">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
                   End Time
                 </label>
                 <Input
@@ -113,20 +119,40 @@ export default function AddTodo() {
                   onChange={(e) => setEndTime(e.target.value)}
                   min={startTime || getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full"
+                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation"
+                  style={{
+                    fontSize: '16px', // Prevents zoom on iOS Safari
+                  }}
                 />
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="w-full min-w-0 space-y-1.5">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+                Note (optional)
+              </label>
+              <Input
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g., Travelling to school takes 30 mins"
+                disabled={isPending}
+                className="w-full text-base sm:text-sm h-11 sm:h-9"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                Additional context for task breakdown (e.g., travel time, special requirements)
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
               <Checkbox
                 id="should-breakdown"
                 checked={shouldBreakdown}
                 onCheckedChange={(checked) => setShouldBreakdown(checked === true)}
                 disabled={isPending}
+                className="flex-shrink-0"
               />
               <label
                 htmlFor="should-breakdown"
-                className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
+                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none"
               >
                 Automatically break down into smaller tasks
               </label>
