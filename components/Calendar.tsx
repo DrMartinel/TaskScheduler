@@ -341,7 +341,7 @@ export default function Calendar({ todos }: CalendarProps) {
         <div className="relative overflow-visible">
           {viewMode === 'day' ? (
             /* Day View Layout */
-            <div className="flex overflow-visible">
+            <div className="flex overflow-visible relative">
               {/* Time Column */}
               <div className="w-16 sm:w-20 flex-shrink-0 border-r border-gray-200 dark:border-gray-800">
                 {hours.map((hour) => (
@@ -413,48 +413,53 @@ export default function Calendar({ todos }: CalendarProps) {
                     );
                   })}
                 </div>
+              </div>
 
-                {/* Current time indicator - separate container to ensure it's above tasks */}
-                {currentTimePos !== null && viewMode === 'day' && (() => {
-                  const today = new Date();
-                  const isToday = today.toDateString() === currentDate.toDateString();
-                  if (!isToday) return null;
+              {/* Current time indicator - spans full width including time column */}
+              {currentTimePos !== null && viewMode === 'day' && (() => {
+                const today = new Date();
+                const isToday = today.toDateString() === currentDate.toDateString();
+                if (!isToday) return null;
 
-                  const currentMinute = currentTime.getMinutes();
-                  const currentHour = currentTime.getHours();
-                  
-                  return (
+                const currentMinute = currentTime.getMinutes();
+                const currentHour = currentTime.getHours();
+                
+                return (
+                  <div
+                    className="absolute inset-0 z-50 pointer-events-none"
+                  >
                     <div
-                      className="absolute inset-0 z-50 pointer-events-none"
+                      className="absolute left-0 right-0 flex items-center pointer-events-auto"
+                      style={{
+                        top: `${((currentHour * 60 + currentMinute) / (24 * 60)) * 100}%`
+                      }}
                     >
-                      <div
-                        className="absolute left-0 right-0 flex items-center pointer-events-auto"
-                        style={{
-                          top: `${((currentHour * 60 + currentMinute) / (24 * 60)) * 100}%`
-                        }}
-                      >
-                        <div className="flex items-center w-full">
-                          {/* Animated dot with shadow */}
-                          <div className="relative flex-shrink-0 animate-pulse">
-                            <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
-                            <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-75"></div>
-                          </div>
-                          
-                          {/* Line with gradient - starts from dot center, same animation */}
-                          <div className="flex-1 h-0.5 bg-gradient-to-r from-red-500 via-red-400 to-transparent relative -ml-1.5 animate-pulse">
-                            <div className="absolute inset-0 bg-red-500/30 blur-sm"></div>
-                          </div>
-                          
-                          {/* Time badge with better styling */}
-                          <span className="ml-3 flex-shrink-0 text-xs font-semibold text-white bg-red-500 dark:bg-red-600 px-2 py-1 rounded-md shadow-md border border-red-600 dark:border-red-700 whitespace-nowrap">
-                            {formatTime(currentTime)}
-                          </span>
+                      <div className="flex items-center w-full relative">
+                        {/* Full width line - solid red */}
+                        <div className="absolute left-0 right-0 h-0.5 bg-red-500 animate-pulse">
+                          <div className="absolute inset-0 bg-red-500/30 blur-sm"></div>
                         </div>
+                        
+                        {/* Animated dot with shadow - positioned at the left end */}
+                        <div 
+                          className="relative flex-shrink-0 animate-pulse z-10 left-0 -ml-1.5"
+                        >
+                          <div className="w-3 h-3 rounded-full bg-red-500 shadow-lg shadow-red-500/50"></div>
+                          <div className="absolute inset-0 w-3 h-3 rounded-full bg-red-400 animate-ping opacity-75"></div>
+                        </div>
+                        
+                        {/* Time badge with better styling - positioned on the right */}
+                        <span 
+                          className="absolute right-0 flex-shrink-0 text-xs font-semibold text-white bg-red-500 dark:bg-red-600 px-2 py-1 rounded-md shadow-md border border-red-600 dark:border-red-700 whitespace-nowrap z-10"
+                          style={{ top: '-0.375rem' }} // Center vertically with the line
+                        >
+                          {formatTime(currentTime)}
+                        </span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
             </div>
           ) : (
             /* Week View Layout */
