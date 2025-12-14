@@ -338,3 +338,235 @@ CRITICAL INSTRUCTIONS:
   }
 }
 
+export interface ScheduleSlot {
+  start_time: string; // ISO 8601 format
+  end_time: string; // ISO 8601 format
+  text: string;
+}
+
+export interface OptimalTimeResult {
+  start_time: string; // ISO 8601 format
+  end_time: string; // ISO 8601 format
+}
+
+export async function determineOptimalTime(
+  taskText: string,
+  durationMinutes: number,
+  schedule: ScheduleSlot[],
+  note?: string | null,
+  targetDate?: Date
+): Promise<OptimalTimeResult | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    console.warn('[Gemini] GEMINI_API_KEY not set, skipping optimal time determination');
+    return null;
+  }
+
+  const genAI = getGeminiClient();
+  if (!genAI) {
+    console.error('[Gemini] Failed to initialize Gemini client');
+    return null;
+  }
+
+  console.log('[Gemini] Determining optimal time for task:', taskText);
+  console.log('[Gemini] Duration:', durationMinutes, 'minutes');
+  console.log('[Gemini] Schedule slots:', schedule.length);
+
+  try {
+    const model = genAI.getGenerativeModel({ 
+      model: 'gemini-2.5-flash',
+      generationConfig: {
+        temperature: 0.3,
+        responseMimeType: 'application/json',
+      },
+    });
+
+    // Get timezone information
+    const getTimezoneName = () => {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch {
+        return 'local timezone';
+      }
+    };
+
+    const getTimezoneOffset = () => {
+      const offset = -new Date().getTimezoneOffset();
+      const hours = Math.floor(Math.abs(offset) / 60);
+      const minutes = Math.abs(offset) % 60;
+      const sign = offset >= 0 ? '+' : '-';
+      return `${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    };
+
+    const timezoneName = getTimezoneName();
+    const timezoneOffset = getTimezoneOffset();
+
+    // Format schedule for prompt
+    const date = targetDate || new Date();
+    date.setHours(0, 0, 0, 0);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    // Format date for display
+    const dateDisplay = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+
+    let scheduleContext = '';
+    if (schedule.length > 0) {
+      scheduleContext = `\n\nCurrent Schedule for ${dateDisplay}:\n`;
+      schedule.forEach((slot, idx) => {
+        const start = new Date(slot.start_time);
+        const end = new Date(slot.end_time);
+        const startFormatted = start.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        const endFormatted = end.toLocaleString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        });
+        scheduleContext += `${idx + 1}. ${slot.text}: ${startFormatted} - ${endFormatted}\n`;
+      });
+    } else {
+      scheduleContext = `\n\nCurrent Schedule for ${dateDisplay}: No scheduled tasks\n`;
+    }
+
+    // Add note context if provided
+    let noteContext = '';
+    if (note && note.trim()) {
+      noteContext = `\n\nImportant Note: ${note.trim()}\n`;
+    }
+
+    const prompt = `You are a scheduling assistant. Your task is to determine the optimal start and end time for a task based on its duration and the user's existing schedule.
+
+Task: "${taskText}"
+Duration: ${durationMinutes} minutes${scheduleContext}${noteContext}
+
+CRITICAL REQUIREMENTS:
+1. Find the best available time slot that can accommodate ${durationMinutes} minutes
+2. Avoid conflicts with existing scheduled tasks
+3. Consider reasonable times (e.g., not too early in the morning, not too late at night)
+4. If possible, find a gap between existing tasks
+5. If no gap is available, suggest the earliest available time after the last scheduled task
+6. All times must be in ${timezoneName} (${timezoneOffset})
+7. **CRITICAL: The date MUST be exactly ${dateStr} (${dateDisplay}) - DO NOT use any other date**
+
+Return a JSON object with:
+{
+  "start_time": "ISO 8601 format datetime string (YYYY-MM-DDTHH:mm:ss in ${timezoneName} ${timezoneOffset})",
+  "end_time": "ISO 8601 format datetime string (YYYY-MM-DDTHH:mm:ss in ${timezoneName} ${timezoneOffset})"
+}
+
+Example response for date ${dateStr}:
+{
+  "start_time": "${dateStr}T14:00:00",
+  "end_time": "${dateStr}T15:00:00"
+}
+
+IMPORTANT: 
+- start_time and end_time must be exactly ${durationMinutes} minutes apart
+- Use the same timezone (${timezoneName} ${timezoneOffset}) as the schedule
+- **THE DATE IN start_time AND end_time MUST BE ${dateStr} (${dateDisplay}) - NO EXCEPTIONS**
+- The format must be: ${dateStr}THH:mm:ss (e.g., "${dateStr}T14:00:00")
+- Do NOT convert to a different timezone
+- Do NOT use today's date if it's different from ${dateStr}
+- Do NOT use tomorrow's date
+- The date portion (YYYY-MM-DD) must match ${dateStr} exactly`;
+
+    console.log('[Gemini] Sending request to determine optimal time...');
+    
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const content = response.text();
+    
+    console.log('[Gemini] Received response:', content?.substring(0, 200));
+    
+    if (!content) {
+      console.error('[Gemini] No content in response');
+      return null;
+    }
+
+    // Parse the response
+    let parsed: any;
+    try {
+      parsed = JSON.parse(content);
+      console.log('[Gemini] Parsed JSON successfully');
+    } catch (e) {
+      console.error('[Gemini] Failed to parse JSON response. Content:', content);
+      console.error('[Gemini] Parse error:', e);
+      return null;
+    }
+
+    // Validate and return
+    if (!parsed.start_time || !parsed.end_time) {
+      console.error('[Gemini] Missing start_time or end_time in response');
+      return null;
+    }
+
+    // Convert to ISO strings and ensure correct date
+    try {
+      let startDate = new Date(parsed.start_time);
+      let endDate = new Date(parsed.end_time);
+      
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        console.error('[Gemini] Invalid date format in response');
+        return null;
+      }
+
+      // Ensure the dates match the target date
+      // Extract time from Gemini's response and apply it to the target date
+      const targetDate = date; // Use the date we set earlier
+      const targetYear = targetDate.getFullYear();
+      const targetMonth = targetDate.getMonth();
+      const targetDay = targetDate.getDate();
+
+      // Get hours and minutes from Gemini's response
+      const startHours = startDate.getHours();
+      const startMinutes = startDate.getMinutes();
+      const startSeconds = startDate.getSeconds();
+
+      const endHours = endDate.getHours();
+      const endMinutes = endDate.getMinutes();
+      const endSeconds = endDate.getSeconds();
+
+      // Create new dates with the target date but Gemini's time
+      const correctedStartDate = new Date(targetYear, targetMonth, targetDay, startHours, startMinutes, startSeconds);
+      const correctedEndDate = new Date(targetYear, targetMonth, targetDay, endHours, endMinutes, endSeconds);
+
+      // Verify duration matches
+      const actualDuration = (correctedEndDate.getTime() - correctedStartDate.getTime()) / (1000 * 60);
+      if (Math.abs(actualDuration - durationMinutes) > 1) {
+        console.warn(`[Gemini] Duration mismatch: expected ${durationMinutes} minutes, got ${actualDuration} minutes`);
+        // Recalculate end time to match duration exactly
+        correctedEndDate.setTime(correctedStartDate.getTime() + durationMinutes * 60 * 1000);
+      }
+
+      // Verify the date matches
+      const startDateStr = correctedStartDate.toISOString().split('T')[0];
+      const targetDateStr = dateStr;
+      if (startDateStr !== targetDateStr) {
+        console.warn(`[Gemini] Date mismatch: expected ${targetDateStr}, got ${startDateStr}. Correcting to ${targetDateStr}`);
+      }
+
+      console.log('[Gemini] Final times:', correctedStartDate.toISOString(), 'to', correctedEndDate.toISOString());
+
+      return {
+        start_time: correctedStartDate.toISOString(),
+        end_time: correctedEndDate.toISOString(),
+      };
+    } catch (e) {
+      console.error('[Gemini] Error parsing dates:', e);
+      return null;
+    }
+  } catch (error: any) {
+    console.error('[Gemini] Error determining optimal time:', error?.message);
+    return null;
+  }
+}
+

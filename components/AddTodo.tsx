@@ -15,10 +15,15 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 
+type TaskType = 'scheduled' | 'duration' | 'no-time';
+
 export default function AddTodo() {
   const [text, setText] = useState('');
+  const [taskType, setTaskType] = useState<TaskType>('scheduled');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [duration, setDuration] = useState(''); // Duration in minutes
+  const [durationDate, setDurationDate] = useState(''); // Date for duration task (YYYY-MM-DD)
   const [note, setNote] = useState('');
   const [shouldBreakdown, setShouldBreakdown] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -30,28 +35,38 @@ export default function AddTodo() {
 
     const formData = new FormData();
     formData.append('text', text.trim());
+    formData.append('task_type', taskType);
     
-    // Convert datetime-local values to ISO strings (treating them as local time)
-    if (startTime) {
-      // datetime-local format: "YYYY-MM-DDTHH:mm"
-      // Create a Date object treating it as local time, then convert to ISO
-      const localDate = new Date(startTime);
-      // Check if the date is valid (handles timezone conversion properly)
-      if (!isNaN(localDate.getTime())) {
-        formData.append('start_time', localDate.toISOString());
-      } else {
-        formData.append('start_time', startTime);
+    // Handle different task types
+    if (taskType === 'scheduled') {
+      // Convert datetime-local values to ISO strings (treating them as local time)
+      if (startTime) {
+        const localDate = new Date(startTime);
+        if (!isNaN(localDate.getTime())) {
+          formData.append('start_time', localDate.toISOString());
+        } else {
+          formData.append('start_time', startTime);
+        }
+      }
+      
+      if (endTime) {
+        const localDate = new Date(endTime);
+        if (!isNaN(localDate.getTime())) {
+          formData.append('end_time', localDate.toISOString());
+        } else {
+          formData.append('end_time', endTime);
+        }
+      }
+    } else if (taskType === 'duration') {
+      // Duration task - send duration in minutes and optional date
+      if (duration) {
+        formData.append('duration', duration);
+      }
+      if (durationDate) {
+        formData.append('duration_date', durationDate);
       }
     }
-    
-    if (endTime) {
-      const localDate = new Date(endTime);
-      if (!isNaN(localDate.getTime())) {
-        formData.append('end_time', localDate.toISOString());
-      } else {
-        formData.append('end_time', endTime);
-      }
-    }
+    // For 'no-time' type, don't send any time information
     
     if (note) formData.append('note', note.trim());
     formData.append('should_breakdown', shouldBreakdown.toString());
@@ -59,8 +74,11 @@ export default function AddTodo() {
     startTransition(async () => {
       await addTodo(formData);
       setText('');
+      setTaskType('scheduled');
       setStartTime('');
       setEndTime('');
+      setDuration('');
+      setDurationDate('');
       setNote('');
       setIsOpen(false);
     });
@@ -75,6 +93,15 @@ export default function AddTodo() {
     const hours = String(now.getHours()).padStart(2, '0');
     const minutes = String(now.getMinutes()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Get today's date in YYYY-MM-DD format for date input
+  const getTodayDate = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   return (
@@ -125,44 +152,141 @@ export default function AddTodo() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-full overflow-hidden">
-              <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Start Time
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  min={getTodayDateTime()}
+            {/* Task Type Selector */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Task Type
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTaskType('scheduled')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    taskType === 'scheduled'
+                      ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-md'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
                   disabled={isPending}
-                  className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
-                  style={{
-                    fontSize: '16px', // Prevents zoom on iOS Safari
-                    width: '100%',
-                    maxWidth: '100%',
-                  }}
-                />
-              </div>
-              <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  End Time
-                </label>
-                <Input
-                  type="datetime-local"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  min={startTime || getTodayDateTime()}
+                >
+                  Scheduled
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskType('duration')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    taskType === 'duration'
+                      ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-md'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
                   disabled={isPending}
-                  className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
-                  style={{
-                    fontSize: '16px', // Prevents zoom on iOS Safari
-                    width: '100%',
-                    maxWidth: '100%',
-                  }}
-                />
+                >
+                  Duration
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTaskType('no-time')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    taskType === 'no-time'
+                      ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-md'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                  }`}
+                  disabled={isPending}
+                >
+                  No Time
+                </button>
               </div>
             </div>
+
+            {/* Scheduled Task: Start/End Time */}
+            {taskType === 'scheduled' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-full overflow-hidden">
+                <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Start Time
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                    min={getTodayDateTime()}
+                    disabled={isPending}
+                    className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
+                    style={{
+                      fontSize: '16px',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
+                  />
+                </div>
+                <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    End Time
+                  </label>
+                  <Input
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    min={startTime || getTodayDateTime()}
+                    disabled={isPending}
+                    className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
+                    style={{
+                      fontSize: '16px',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Duration Task: Duration and Date Input */}
+            {taskType === 'duration' && (
+              <div className="space-y-4">
+                <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Date (optional)
+                  </label>
+                  <Input
+                    type="date"
+                    value={durationDate}
+                    onChange={(e) => setDurationDate(e.target.value)}
+                    min={getTodayDate()}
+                    disabled={isPending}
+                    className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
+                    style={{
+                      fontSize: '16px',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Leave empty to use today's date
+                  </p>
+                </div>
+                <div className="w-full min-w-0 space-y-2 max-w-full overflow-hidden">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Duration (minutes)
+                  </label>
+                  <Input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(e.target.value)}
+                    placeholder="e.g., 60 for 1 hour"
+                    min="1"
+                    disabled={isPending}
+                    className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
+                    style={{
+                      fontSize: '16px',
+                      width: '100%',
+                      maxWidth: '100%',
+                    }}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    AI will determine the best start and end time based on your schedule for the selected date
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="w-full min-w-0 space-y-2">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -210,7 +334,11 @@ export default function AddTodo() {
               type="submit"
               disabled={isPending || !text.trim()}
             >
-              {isPending ? 'Adding...' : 'Add Task'}
+              {isPending 
+                ? (taskType === 'duration' 
+                    ? (shouldBreakdown ? 'Finding time & generating subtasks...' : 'Finding optimal time...')
+                    : (shouldBreakdown ? 'Creating task & generating subtasks...' : 'Creating task...'))
+                : 'Add Task'}
             </Button>
           </DialogFooter>
         </form>

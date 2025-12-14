@@ -2,12 +2,15 @@
 
 import { createServerClient } from './supabase';
 import { revalidatePath } from 'next/cache';
-import { breakDownTask } from './gemini';
+import { breakDownTask, determineOptimalTime, ScheduleSlot } from './gemini';
 
 export async function addTodo(formData: FormData) {
   const text = formData.get('text') as string;
+  const taskType = formData.get('task_type') as string || 'scheduled';
   const startTime = formData.get('start_time') as string;
   const endTime = formData.get('end_time') as string;
+  const duration = formData.get('duration') as string;
+  const durationDate = formData.get('duration_date') as string;
   const note = formData.get('note') as string;
   const shouldBreakdown = formData.get('should_breakdown') === 'true';
   
@@ -18,20 +21,88 @@ export async function addTodo(formData: FormData) {
   try {
     const supabase = createServerClient();
     
-    // Parse dates if provided
-    // If startTime/endTime is already an ISO string (contains 'Z' or timezone offset), use it directly
-    // Otherwise, parse it as datetime-local format (shouldn't happen if client sends ISO strings)
-    const isISOString = (dateString: string): boolean => {
-      // ISO 8601 format: contains 'Z' (UTC) or timezone offset (+HH:MM or -HH:MM)
-      return dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString) || /[+-]\d{4}$/.test(dateString);
-    };
+    let startTimeISO: string | null = null;
+    let endTimeISO: string | null = null;
     
-    const startTimeISO = startTime 
-      ? (isISOString(startTime) ? startTime : new Date(startTime).toISOString())
-      : null;
-    const endTimeISO = endTime 
-      ? (isISOString(endTime) ? endTime : new Date(endTime).toISOString())
-      : null;
+    // Handle different task types
+    if (taskType === 'duration' && duration) {
+      // For duration tasks, always determine optimal time based on schedule (regardless of breakdown setting)
+      // This uses Gemini to find the best time slot, but doesn't break down into subtasks unless shouldBreakdown is true
+      console.log('[Actions] Duration task detected, determining optimal time...');
+      
+      // Determine the target date (use provided date or default to today)
+      const targetDate = durationDate ? new Date(durationDate) : new Date();
+      targetDate.setHours(0, 0, 0, 0);
+      const targetDateEnd = new Date(targetDate);
+      targetDateEnd.setHours(23, 59, 59, 999);
+      
+      console.log('[Actions] Fetching schedule for date:', targetDate.toISOString().split('T')[0]);
+      
+      const { data: dateTasks, error: scheduleError } = await supabase
+        .from('todos')
+        .select('id, text, start_time, end_time')
+        .eq('parent_id', null) // Only parent tasks
+        .gte('start_time', targetDate.toISOString())
+        .lte('start_time', targetDateEnd.toISOString())
+        .order('start_time', { ascending: true });
+      
+      if (scheduleError) {
+        console.error('[Actions] Error fetching schedule:', scheduleError);
+      }
+      
+      // Build schedule slots
+      const schedule: ScheduleSlot[] = (dateTasks || [])
+        .filter(task => task.start_time && task.end_time)
+        .map(task => ({
+          start_time: task.start_time!,
+          end_time: task.end_time!,
+          text: task.text,
+        }));
+      
+      console.log('[Actions] Found', schedule.length, 'scheduled tasks for the selected date');
+      
+      // Determine optimal time
+      const durationMinutes = parseInt(duration, 10);
+      if (!isNaN(durationMinutes) && durationMinutes > 0) {
+        const optimalTime = await determineOptimalTime(
+          text.trim(),
+          durationMinutes,
+          schedule,
+          note || null,
+          targetDate
+        );
+        
+        if (optimalTime) {
+          startTimeISO = optimalTime.start_time;
+          endTimeISO = optimalTime.end_time;
+          console.log('[Actions] Optimal time determined:', startTimeISO, 'to', endTimeISO);
+        } else {
+          console.warn('[Actions] Failed to determine optimal time, falling back to default');
+          // Fallback: use target date at 9 AM + duration
+          const fallbackStart = new Date(targetDate);
+          fallbackStart.setHours(9, 0, 0, 0);
+          startTimeISO = fallbackStart.toISOString();
+          const fallbackEnd = new Date(fallbackStart.getTime() + durationMinutes * 60 * 1000);
+          endTimeISO = fallbackEnd.toISOString();
+        }
+      }
+    } else if (taskType === 'scheduled') {
+      // Parse dates if provided
+      // If startTime/endTime is already an ISO string (contains 'Z' or timezone offset), use it directly
+      // Otherwise, parse it as datetime-local format (shouldn't happen if client sends ISO strings)
+      const isISOString = (dateString: string): boolean => {
+        // ISO 8601 format: contains 'Z' (UTC) or timezone offset (+HH:MM or -HH:MM)
+        return dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString) || /[+-]\d{4}$/.test(dateString);
+      };
+      
+      startTimeISO = startTime 
+        ? (isISOString(startTime) ? startTime : new Date(startTime).toISOString())
+        : null;
+      endTimeISO = endTime 
+        ? (isISOString(endTime) ? endTime : new Date(endTime).toISOString())
+        : null;
+    }
+    // For 'no-time' type, startTimeISO and endTimeISO remain null
     
     // Insert the main todo
     const { data: mainTodo, error: mainError } = await supabase
