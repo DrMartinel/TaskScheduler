@@ -24,3 +24,11 @@ export interface SubtaskBreakdown {
   scheduled_time: string;
   order_index: number;
 }
+
+export interface Reminder {
+  id: string;
+  text: string;
+  completed: boolean;
+  created_at: string;
+  updated_at: string;
+}

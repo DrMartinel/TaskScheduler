@@ -116,14 +116,16 @@ export async function breakDownTask(
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: false
       });
       const endFormatted = end.toLocaleString('en-US', { 
         weekday: 'short', 
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: false
       });
       timeContext = `\n\nTask Schedule:\n- Start: ${startFormatted}\n- End: ${endFormatted}\n\nBreak down the task to fit within this time range.`;
     } else if (startTime) {
@@ -133,7 +135,8 @@ export async function breakDownTask(
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: false
       });
       timeContext = `\n\nTask Start Time: ${startFormatted}\n\nBreak down the task starting from this time.`;
     } else if (endTime) {
@@ -143,7 +146,8 @@ export async function breakDownTask(
         month: 'short', 
         day: 'numeric', 
         hour: '2-digit', 
-        minute: '2-digit' 
+        minute: '2-digit',
+        hour12: false
       });
       timeContext = `\n\nTask End Time: ${endFormatted}\n\nBreak down the task working backwards from this end time.`;
     }

@@ -5,6 +5,15 @@ import { addTodo } from '@/lib/actions';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function AddTodo() {
   const [text, setText] = useState('');
@@ -12,7 +21,7 @@ export default function AddTodo() {
   const [endTime, setEndTime] = useState('');
   const [note, setNote] = useState('');
   const [shouldBreakdown, setShouldBreakdown] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -32,7 +41,7 @@ export default function AddTodo() {
       setStartTime('');
       setEndTime('');
       setNote('');
-      setIsExpanded(false);
+      setIsOpen(false);
     });
   };
 
@@ -48,53 +57,56 @@ export default function AddTodo() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <div className="space-y-3">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <Input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Add a new todo..."
-            required
-            disabled={isPending}
-            className="flex-1"
-          />
-          <Button
-            type="submit"
-            disabled={isPending || !text.trim()}
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button
+          className="w-14 h-14 sm:w-16 sm:h-16 rounded-full shadow-lg hover:shadow-xl transition-all bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-200"
+          size="icon"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 sm:h-7 sm:w-7"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
           >
-            {isPending ? 'Adding...' : 'Add'}
-          </Button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 flex items-center gap-1"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                clipRule="evenodd"
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 4v16m8-8H4"
+            />
+          </svg>
+          <span className="sr-only">Add new todo</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New Task</DialogTitle>
+          <DialogDescription>
+            Create a new task with optional scheduling and automatic breakdown
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="w-full">
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Task Name
+              </label>
+              <Input
+                type="text"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Add a new todo..."
+                required
+                disabled={isPending}
+                className="w-full"
               />
-            </svg>
-            {isExpanded ? 'Less options' : 'More options'}
-          </button>
-        </div>
+            </div>
 
-        {isExpanded && (
-          <div className="space-y-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-              <div className="w-full min-w-0 space-y-1.5">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="w-full min-w-0 space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Start Time
                 </label>
                 <Input
@@ -109,8 +121,8 @@ export default function AddTodo() {
                   }}
                 />
               </div>
-              <div className="w-full min-w-0 space-y-1.5">
-                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+              <div className="w-full min-w-0 space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   End Time
                 </label>
                 <Input
@@ -126,8 +138,9 @@ export default function AddTodo() {
                 />
               </div>
             </div>
-            <div className="w-full min-w-0 space-y-1.5">
-              <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300">
+
+            <div className="w-full min-w-0 space-y-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                 Note (optional)
               </label>
               <Input
@@ -142,7 +155,8 @@ export default function AddTodo() {
                 Additional context for task breakdown (e.g., travel time, special requirements)
               </p>
             </div>
-            <div className="flex items-center gap-2 pt-1">
+
+            <div className="flex items-center gap-2 pt-2">
               <Checkbox
                 id="should-breakdown"
                 checked={shouldBreakdown}
@@ -152,14 +166,30 @@ export default function AddTodo() {
               />
               <label
                 htmlFor="should-breakdown"
-                className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none"
+                className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none"
               >
                 Automatically break down into smaller tasks
               </label>
             </div>
           </div>
-        )}
-      </div>
-    </form>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isPending || !text.trim()}
+            >
+              {isPending ? 'Adding...' : 'Add Task'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

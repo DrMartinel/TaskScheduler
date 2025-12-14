@@ -49,8 +49,8 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: var(--custom-light-bg, oklch(1 0 0));
+  --foreground: var(--custom-light-text, oklch(0.145 0 0));
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -83,8 +83,8 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
+  --background: var(--custom-dark-bg, oklch(0.145 0 0));
+  --foreground: var(--custom-dark-text, oklch(0.985 0 0));
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);

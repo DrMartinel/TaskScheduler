@@ -190,3 +190,111 @@ export async function updateTodoTime(formData: FormData) {
     console.error('Error updating todo time:', error);
   }
 }
+
+// ============================================
+// Reminder Actions
+// ============================================
+
+export async function addReminder(formData: FormData) {
+  const text = formData.get('text') as string;
+
+  if (!text || !text.trim()) {
+    return;
+  }
+
+  try {
+    const supabase = createServerClient();
+    const { error } = await supabase
+      .from('reminders')
+      .insert([{ 
+        text: text.trim(), 
+        completed: false
+      }]);
+
+    if (error) {
+      console.error('Error adding reminder:', error);
+      return;
+    }
+    
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error adding reminder:', error);
+  }
+}
+
+export async function toggleReminder(formData: FormData) {
+  const id = formData.get('id') as string;
+  const completed = formData.get('completed') === 'true';
+
+  try {
+    const supabase = createServerClient();
+    const { error } = await supabase
+      .from('reminders')
+      .update({ completed: !completed, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error toggling reminder:', error);
+      return;
+    }
+    
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error toggling reminder:', error);
+  }
+}
+
+export async function deleteReminder(formData: FormData) {
+  const id = formData.get('id') as string;
+
+  try {
+    const supabase = createServerClient();
+    const { error } = await supabase
+      .from('reminders')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting reminder:', error);
+      return;
+    }
+    
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error deleting reminder:', error);
+  }
+}
+
+export async function deleteAllReminders() {
+  try {
+    const supabase = createServerClient();
+    // Delete all reminders by selecting all and deleting them
+    const { data: allReminders, error: fetchError } = await supabase
+      .from('reminders')
+      .select('id');
+
+    if (fetchError) {
+      console.error('Error fetching reminders:', fetchError);
+      return;
+    }
+
+    if (!allReminders || allReminders.length === 0) {
+      return; // No reminders to delete
+    }
+
+    // Delete all reminders
+    const { error } = await supabase
+      .from('reminders')
+      .delete()
+      .in('id', allReminders.map(r => r.id));
+
+    if (error) {
+      console.error('Error deleting all reminders:', error);
+      return;
+    }
+    
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error deleting all reminders:', error);
+  }
+}

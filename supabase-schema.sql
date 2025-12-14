@@ -58,6 +58,37 @@ CREATE INDEX IF NOT EXISTS idx_todos_parent_tasks ON todos(parent_id)
   WHERE parent_id IS NULL;
 
 -- ============================================
+-- Reminders Table
+-- ============================================
+-- Create reminders table for quick reminders (separate from todos)
+CREATE TABLE IF NOT EXISTS reminders (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  text TEXT NOT NULL,
+  completed BOOLEAN DEFAULT FALSE NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Enable Row Level Security (RLS) for reminders
+ALTER TABLE reminders ENABLE ROW LEVEL SECURITY;
+
+-- Create a policy that allows all operations for reminders
+CREATE POLICY "Allow all operations on reminders" ON reminders
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Indexes for reminders
+CREATE INDEX IF NOT EXISTS idx_reminders_created_at ON reminders(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_reminders_completed ON reminders(completed);
+
+-- Create trigger to automatically update updated_at for reminders
+CREATE TRIGGER update_reminders_updated_at
+  BEFORE UPDATE ON reminders
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================
 -- Automatic Timestamp Updates
 -- ============================================
 
