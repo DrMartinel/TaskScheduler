@@ -136,7 +136,7 @@ export default function AddTodo() {
                   onChange={(e) => setStartTime(e.target.value)}
                   min={getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation max-w-full box-border"
+                  className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
                   style={{
                     fontSize: '16px', // Prevents zoom on iOS Safari
                     width: '100%',
@@ -154,7 +154,7 @@ export default function AddTodo() {
                   onChange={(e) => setEndTime(e.target.value)}
                   min={startTime || getTodayDateTime()}
                   disabled={isPending}
-                  className="w-full text-base sm:text-sm h-11 sm:h-9 touch-manipulation max-w-full box-border"
+                  className="w-full text-sm h-9 touch-manipulation max-w-full box-border"
                   style={{
                     fontSize: '16px', // Prevents zoom on iOS Safari
                     width: '100%',
