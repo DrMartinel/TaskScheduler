@@ -30,8 +30,29 @@ export default function AddTodo() {
 
     const formData = new FormData();
     formData.append('text', text.trim());
-    if (startTime) formData.append('start_time', startTime);
-    if (endTime) formData.append('end_time', endTime);
+    
+    // Convert datetime-local values to ISO strings (treating them as local time)
+    if (startTime) {
+      // datetime-local format: "YYYY-MM-DDTHH:mm"
+      // Create a Date object treating it as local time, then convert to ISO
+      const localDate = new Date(startTime);
+      // Check if the date is valid (handles timezone conversion properly)
+      if (!isNaN(localDate.getTime())) {
+        formData.append('start_time', localDate.toISOString());
+      } else {
+        formData.append('start_time', startTime);
+      }
+    }
+    
+    if (endTime) {
+      const localDate = new Date(endTime);
+      if (!isNaN(localDate.getTime())) {
+        formData.append('end_time', localDate.toISOString());
+      } else {
+        formData.append('end_time', endTime);
+      }
+    }
+    
     if (note) formData.append('note', note.trim());
     formData.append('should_breakdown', shouldBreakdown.toString());
 

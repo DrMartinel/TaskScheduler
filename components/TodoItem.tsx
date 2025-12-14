@@ -65,9 +65,13 @@ export default function TodoItem({ todo }: TodoItemProps) {
       return;
     }
 
+    // Convert datetime-local to ISO string (treating it as local time)
+    const localDate = new Date(editStartTime);
+    const isoString = !isNaN(localDate.getTime()) ? localDate.toISOString() : editStartTime;
+
     const formData = new FormData();
     formData.append('id', todo.id);
-    formData.append('start_time', editStartTime);
+    formData.append('start_time', isoString);
 
     startTransition(async () => {
       await updateTodoTime(formData);
@@ -81,9 +85,13 @@ export default function TodoItem({ todo }: TodoItemProps) {
       return;
     }
 
+    // Convert datetime-local to ISO string (treating it as local time)
+    const localDate = new Date(editEndTime);
+    const isoString = !isNaN(localDate.getTime()) ? localDate.toISOString() : editEndTime;
+
     const formData = new FormData();
     formData.append('id', todo.id);
-    formData.append('end_time', editEndTime);
+    formData.append('end_time', isoString);
 
     startTransition(async () => {
       await updateTodoTime(formData);

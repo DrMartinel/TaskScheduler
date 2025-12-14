@@ -19,8 +19,19 @@ export async function addTodo(formData: FormData) {
     const supabase = createServerClient();
     
     // Parse dates if provided
-    const startTimeISO = startTime ? new Date(startTime).toISOString() : null;
-    const endTimeISO = endTime ? new Date(endTime).toISOString() : null;
+    // If startTime/endTime is already an ISO string (contains 'Z' or timezone offset), use it directly
+    // Otherwise, parse it as datetime-local format (shouldn't happen if client sends ISO strings)
+    const isISOString = (dateString: string): boolean => {
+      // ISO 8601 format: contains 'Z' (UTC) or timezone offset (+HH:MM or -HH:MM)
+      return dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString) || /[+-]\d{4}$/.test(dateString);
+    };
+    
+    const startTimeISO = startTime 
+      ? (isISOString(startTime) ? startTime : new Date(startTime).toISOString())
+      : null;
+    const endTimeISO = endTime 
+      ? (isISOString(endTime) ? endTime : new Date(endTime).toISOString())
+      : null;
     
     // Insert the main todo
     const { data: mainTodo, error: mainError } = await supabase
@@ -157,11 +168,24 @@ export async function updateTodoTime(formData: FormData) {
     const supabase = createServerClient();
     const updateData: any = { updated_at: new Date().toISOString() };
 
+    // Helper to check if a string is already an ISO string
+    const isISOString = (dateString: string): boolean => {
+      // ISO 8601 format: contains 'Z' (UTC) or timezone offset (+HH:MM or -HH:MM)
+      return dateString.includes('Z') || /[+-]\d{2}:\d{2}$/.test(dateString) || /[+-]\d{4}$/.test(dateString);
+    };
+    
     if (startTime !== null) {
-      updateData.start_time = startTime ? new Date(startTime).toISOString() : null;
+      // If startTime is already an ISO string, use it directly
+      // Otherwise, parse it (shouldn't happen if client sends ISO strings)
+      updateData.start_time = startTime 
+        ? (isISOString(startTime) ? startTime : new Date(startTime).toISOString())
+        : null;
     }
     if (endTime !== null) {
-      updateData.end_time = endTime ? new Date(endTime).toISOString() : null;
+      // If endTime is already an ISO string, use it directly
+      updateData.end_time = endTime 
+        ? (isISOString(endTime) ? endTime : new Date(endTime).toISOString())
+        : null;
     }
     if (scheduledTime !== null) {
       // scheduled_time is stored as HH:MM string, validate format
