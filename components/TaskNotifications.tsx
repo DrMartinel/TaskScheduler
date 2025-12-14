@@ -51,13 +51,12 @@ export default function TaskNotifications() {
       try {
         const now = new Date();
 
-        // Fetch all incomplete tasks with start_time
+        // Fetch all incomplete tasks (both parent tasks with start_time and subtasks with scheduled_time)
         const { data: todos, error } = await supabase
           .from('todos')
           .select('*')
           .eq('completed', false)
-          .not('start_time', 'is', null)
-          .order('start_time', { ascending: true });
+          .order('created_at', { ascending: true });
 
         if (error) {
           console.error('Error fetching todos for notifications:', error);
@@ -66,12 +65,46 @@ export default function TaskNotifications() {
 
         if (!todos) return;
 
-        // Check each task to see if it starts in ~30 seconds
-        todos.forEach((todo: Todo) => {
-          if (!todo.start_time) return;
+        // Create a map of parent tasks for subtask date lookup
+        const parentMap = new Map<string, Todo>();
+        todos.forEach(todo => {
+          if (!todo.parent_id) {
+            parentMap.set(todo.id, todo);
+          }
+        });
 
-          const taskStartTime = new Date(todo.start_time);
-          const taskId = todo.id;
+        // Process all tasks (parent and subtasks)
+        todos.forEach((todo: Todo) => {
+          let taskStartTime: Date | null = null;
+          let taskId = todo.id;
+
+          // For parent tasks with start_time
+          if (todo.start_time) {
+            taskStartTime = new Date(todo.start_time);
+          }
+          // For subtasks with scheduled_time
+          else if (todo.parent_id && todo.scheduled_time) {
+            const parent = parentMap.get(todo.parent_id);
+            let baseDate: Date;
+            
+            if (parent?.start_time) {
+              // Use parent's date
+              baseDate = new Date(parent.start_time);
+            } else {
+              // Use today's date
+              baseDate = new Date(now);
+              baseDate.setHours(0, 0, 0, 0);
+            }
+            
+            // Parse scheduled_time (HH:MM format)
+            const [hours, minutes] = todo.scheduled_time.split(':').map(Number);
+            if (!isNaN(hours) && !isNaN(minutes)) {
+              baseDate.setHours(hours, minutes, 0, 0);
+              taskStartTime = baseDate;
+            }
+          }
+
+          if (!taskStartTime) return;
 
           // Check if task starts between now and 30 seconds from now
           // Allow a 5-second window to account for timing variations
@@ -83,7 +116,7 @@ export default function TaskNotifications() {
             !notifiedTasksRef.current.has(taskId)
           ) {
             // Show notification
-            showNotification(todo);
+            showNotification(todo, taskStartTime);
             notifiedTasksRef.current.add(taskId);
           }
 
@@ -111,7 +144,7 @@ export default function TaskNotifications() {
     };
   }, [permission, isNotificationSupported]);
 
-  const showNotification = (todo: Todo) => {
+  const showNotification = (todo: Todo, taskStartTime?: Date) => {
     // Double-check permission before showing notification
     if (!isNotificationSupported) {
       return;
@@ -124,20 +157,24 @@ export default function TaskNotifications() {
       return;
     }
 
-    const taskStartTime = todo.start_time ? new Date(todo.start_time) : null;
-    const timeString = taskStartTime
-      ? taskStartTime.toLocaleTimeString('en-US', {
+    const startTime = taskStartTime || (todo.start_time ? new Date(todo.start_time) : null);
+    const timeString = startTime
+      ? startTime.toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
           hour12: true,
         })
       : '';
 
+    // Determine if this is a subtask
+    const isSubtask = !!todo.parent_id;
+    const prefix = isSubtask ? 'Subtask: ' : '';
+
     try {
       // Create notification using the Notifications Web API
       // Reference: https://developer.mozilla.org/en-US/docs/Web/API/Notification
       const notification = new Notification('Task Starting Soon!', {
-        body: `${todo.text}${timeString ? ` at ${timeString}` : ''}`,
+        body: `${prefix}${todo.text}${timeString ? ` at ${timeString}` : ''}`,
         icon: '/favicon.ico',
         badge: '/favicon.ico',
         tag: `task-${todo.id}`, // Prevent duplicate notifications with the same tag

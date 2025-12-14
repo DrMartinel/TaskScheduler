@@ -73,6 +73,58 @@ export default function NotificationSettings() {
     }
   };
 
+  const triggerTestNotification = () => {
+    if (!isNotificationSupported) {
+      alert('This browser does not support desktop notifications');
+      return;
+    }
+
+    const currentPermission = Notification.permission;
+    if (currentPermission !== 'granted') {
+      alert('Please enable notifications first');
+      return;
+    }
+
+    try {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      const notification = new Notification('Test Notification', {
+        body: `This is a test notification. Current time: ${timeString}`,
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'test-notification',
+        requireInteraction: false,
+        silent: false,
+      });
+
+      // Auto-close notification after 5 seconds
+      setTimeout(() => {
+        notification.close();
+      }, 5000);
+
+      // Handle click event on notification
+      notification.onclick = (event) => {
+        event.preventDefault();
+        window.focus();
+        notification.close();
+      };
+
+      // Handle error event
+      notification.onerror = (error) => {
+        console.error('Notification error:', error);
+        alert('Failed to show notification. Please check your browser settings.');
+      };
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      alert('Failed to show notification. Please check your browser settings.');
+    }
+  };
+
   const status = getPermissionStatus();
 
   // Don't render until mounted (prevents SSR issues)
@@ -158,6 +210,15 @@ export default function NotificationSettings() {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Notifications are blocked. Please enable them in your browser settings.
                 </p>
+              )}
+
+              {permission === 'granted' && (
+                <button
+                  onClick={triggerTestNotification}
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white text-xs font-medium rounded-lg transition-colors border border-gray-200 dark:border-gray-700"
+                >
+                  Test Notification
+                </button>
               )}
             </div>
           </div>
