@@ -186,7 +186,7 @@ export default function Calendar({ todos }: CalendarProps) {
   return (
     <div className="space-y-4">
       {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setViewMode('day')}
@@ -366,10 +366,7 @@ export default function Calendar({ todos }: CalendarProps) {
                       }}
                     >
                       <div className="text-xs sm:text-sm font-medium text-white truncate">
-                        {task.text}
-                      </div>
-                      <div className="text-[10px] text-white/80 mt-0.5">
-                        {formatTime(taskStart)}
+                        {task.text} <span className="text-[10px] text-white/80 font-normal">({formatTime(taskStart)})</span>
                       </div>
                     </div>
                   );

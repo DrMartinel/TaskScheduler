@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import type { CheckedState } from '@radix-ui/react-checkbox';
 import { TodoWithSubtasks } from '@/lib/types';
-import { toggleTodo, deleteTodo, updateTodo } from '@/lib/actions';
+import { toggleTodo, deleteTodo, updateTodo, updateTodoTime } from '@/lib/actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 
@@ -14,6 +14,10 @@ interface TodoItemProps {
 export default function TodoItem({ todo }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(todo.text);
+  const [isEditingStartTime, setIsEditingStartTime] = useState(false);
+  const [isEditingEndTime, setIsEditingEndTime] = useState(false);
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
   const [isPending, startTransition] = useTransition();
   const [showSubtasks, setShowSubtasks] = useState(true);
 
@@ -26,8 +30,87 @@ export default function TodoItem({ todo }: TodoItemProps) {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 
       minute: '2-digit',
-      hour12: true 
+      hour12: false 
     });
+  };
+
+  // Convert Date to datetime-local input format (YYYY-MM-DDTHH:mm)
+  const dateToInputValue = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Initialize edit times when entering edit mode
+  const handleStartTimeEdit = () => {
+    if (taskStart) {
+      setEditStartTime(dateToInputValue(taskStart));
+      setIsEditingStartTime(true);
+    }
+  };
+
+  const handleEndTimeEdit = () => {
+    if (taskEnd) {
+      setEditEndTime(dateToInputValue(taskEnd));
+      setIsEditingEndTime(true);
+    }
+  };
+
+  const handleStartTimeSave = () => {
+    if (!editStartTime || isPending) {
+      setIsEditingStartTime(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('id', todo.id);
+    formData.append('start_time', editStartTime);
+
+    startTransition(async () => {
+      await updateTodoTime(formData);
+      setIsEditingStartTime(false);
+    });
+  };
+
+  const handleEndTimeSave = () => {
+    if (!editEndTime || isPending) {
+      setIsEditingEndTime(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('id', todo.id);
+    formData.append('end_time', editEndTime);
+
+    startTransition(async () => {
+      await updateTodoTime(formData);
+      setIsEditingEndTime(false);
+    });
+  };
+
+  const handleStartTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleStartTimeSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingStartTime(false);
+      if (taskStart) {
+        setEditStartTime(dateToInputValue(taskStart));
+      }
+    }
+  };
+
+  const handleEndTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleEndTimeSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingEndTime(false);
+      if (taskEnd) {
+        setEditEndTime(dateToInputValue(taskEnd));
+      }
+    }
   };
 
   const getDuration = () => {
@@ -125,20 +208,61 @@ export default function TodoItem({ todo }: TodoItemProps) {
             </h3>
             <div className="flex flex-wrap items-center gap-3 text-sm text-white/90">
               {taskStart && (
-                <span className="flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {formatTime(taskStart)}
-                </span>
+                  {isEditingStartTime ? (
+                    <Input
+                      type="datetime-local"
+                      value={editStartTime}
+                      onChange={(e) => setEditStartTime(e.target.value)}
+                      onBlur={handleStartTimeSave}
+                      onKeyDown={handleStartTimeKeyDown}
+                      autoFocus
+                      disabled={isPending}
+                      className="w-auto min-w-[140px] h-7 text-xs bg-white/20 border-white/30 text-white placeholder-white/70"
+                      style={{ fontSize: '12px' }}
+                    />
+                  ) : (
+                    <span
+                      onClick={handleStartTimeEdit}
+                      className="cursor-pointer hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+                      title="Click to edit time"
+                    >
+                      {formatTime(taskStart)}
+                    </span>
+                  )}
+                </div>
               )}
               {taskEnd && (
-                <span className="flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-1">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  {formatTime(taskEnd)}
-                </span>
+                  {isEditingEndTime ? (
+                    <Input
+                      type="datetime-local"
+                      value={editEndTime}
+                      onChange={(e) => setEditEndTime(e.target.value)}
+                      onBlur={handleEndTimeSave}
+                      onKeyDown={handleEndTimeKeyDown}
+                      autoFocus
+                      disabled={isPending}
+                      min={taskStart ? dateToInputValue(taskStart) : undefined}
+                      className="w-auto min-w-[140px] h-7 text-xs bg-white/20 border-white/30 text-white placeholder-white/70"
+                      style={{ fontSize: '12px' }}
+                    />
+                  ) : (
+                    <span
+                      onClick={handleEndTimeEdit}
+                      className="cursor-pointer hover:bg-white/10 px-1.5 py-0.5 rounded transition-colors"
+                      title="Click to edit time"
+                    >
+                      {formatTime(taskEnd)}
+                    </span>
+                  )}
+                </div>
               )}
               {duration && (
                 <span className="flex items-center gap-1 bg-white/20 px-2 py-0.5 rounded-full">
@@ -282,6 +406,8 @@ export default function TodoItem({ todo }: TodoItemProps) {
 function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(subtask.text);
+  const [isEditingTime, setIsEditingTime] = useState(false);
+  const [editTime, setEditTime] = useState(subtask.scheduled_time || '');
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = (checked: CheckedState) => {
@@ -333,6 +459,36 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
     }
   };
 
+  const handleTimeEdit = () => {
+    setEditTime(subtask.scheduled_time || '');
+    setIsEditingTime(true);
+  };
+
+  const handleTimeSave = () => {
+    if (isPending) {
+      setIsEditingTime(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('id', subtask.id);
+    formData.append('scheduled_time', editTime.trim() || '');
+
+    startTransition(async () => {
+      await updateTodoTime(formData);
+      setIsEditingTime(false);
+    });
+  };
+
+  const handleTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleTimeSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingTime(false);
+      setEditTime(subtask.scheduled_time || '');
+    }
+  };
+
   return (
     <div className="flex items-center gap-1.5 sm:gap-2 py-1">
       <Checkbox
@@ -342,11 +498,31 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
         className="w-4 h-4 sm:w-5 sm:h-5"
       />
       
-      {subtask.scheduled_time && (
-        <span className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] flex-shrink-0 ${
-          hasTimeInfo ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
-        }`}>
-          {subtask.scheduled_time}
+      {isEditingTime ? (
+        <Input
+          type="time"
+          value={editTime}
+          onChange={(e) => setEditTime(e.target.value)}
+          onBlur={handleTimeSave}
+          onKeyDown={handleTimeKeyDown}
+          autoFocus
+          disabled={isPending}
+          className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] flex-shrink-0 h-6 ${
+            hasTimeInfo 
+              ? 'text-white bg-white/20 border-white/30 placeholder-white/70' 
+              : 'text-gray-900 dark:text-gray-100'
+          }`}
+          style={{ fontSize: '12px' }}
+        />
+      ) : (
+        <span
+          onClick={handleTimeEdit}
+          className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] flex-shrink-0 cursor-pointer hover:bg-white/10 px-1 py-0.5 rounded transition-colors ${
+            hasTimeInfo ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
+          }`}
+          title={subtask.scheduled_time ? "Click to edit time" : "Click to add time"}
+        >
+          {subtask.scheduled_time || '--:--'}
         </span>
       )}
       

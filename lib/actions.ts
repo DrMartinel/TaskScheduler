@@ -146,3 +146,47 @@ export async function updateTodo(formData: FormData) {
     console.error('Error updating todo:', error);
   }
 }
+
+export async function updateTodoTime(formData: FormData) {
+  const id = formData.get('id') as string;
+  const startTime = formData.get('start_time') as string | null;
+  const endTime = formData.get('end_time') as string | null;
+  const scheduledTime = formData.get('scheduled_time') as string | null;
+
+  try {
+    const supabase = createServerClient();
+    const updateData: any = { updated_at: new Date().toISOString() };
+
+    if (startTime !== null) {
+      updateData.start_time = startTime ? new Date(startTime).toISOString() : null;
+    }
+    if (endTime !== null) {
+      updateData.end_time = endTime ? new Date(endTime).toISOString() : null;
+    }
+    if (scheduledTime !== null) {
+      // scheduled_time is stored as HH:MM string, validate format
+      if (scheduledTime) {
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        if (!timeRegex.test(scheduledTime)) {
+          console.error('Invalid scheduled_time format:', scheduledTime);
+          return;
+        }
+      }
+      updateData.scheduled_time = scheduledTime || null;
+    }
+
+    const { error } = await supabase
+      .from('todos')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating todo time:', error);
+      return;
+    }
+    
+    revalidatePath('/');
+  } catch (error) {
+    console.error('Error updating todo time:', error);
+  }
+}

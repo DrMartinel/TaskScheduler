@@ -90,7 +90,7 @@ export default function NotificationSettings() {
       const timeString = now.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
-        hour12: true,
+        hour12: false,
       });
 
       const notification = new Notification('Test Notification', {
