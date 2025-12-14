@@ -1,65 +1,91 @@
-import Image from "next/image";
+import { createServerClient } from '@/lib/supabase';
+import { Todo, TodoWithSubtasks } from '@/lib/types';
+import AddTodo from '@/components/AddTodo';
+import TodoList from '@/components/TodoList';
+import Calendar from '@/components/Calendar';
+import ViewToggle from '@/components/ViewToggle';
+import NotificationSettings from '@/components/NotificationSettings';
 
-export default function Home() {
+export default async function Page() {
+  const supabase = createServerClient();
+  
+  const { data: todos, error } = await supabase
+    .from('todos')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  const todosList: Todo[] = todos || [];
+
+  if (error) {
+    console.error('Error fetching todos:', error);
+  }
+
+  // Organize todos into parent-child structure
+  const parentTodos = todosList.filter(todo => !todo.parent_id);
+  const todosWithSubtasks: TodoWithSubtasks[] = parentTodos.map(parent => {
+    const subtasks = todosList
+      .filter(todo => todo.parent_id === parent.id)
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    
+    return {
+      ...parent,
+      subtasks: subtasks.length > 0 ? subtasks : undefined,
+    };
+  });
+
+  const allTodos = todosList;
+  const completedCount = allTodos.filter((todo) => todo.completed).length;
+  const totalCount = allTodos.length;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-4 px-3 sm:py-8 sm:px-4">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
+        {/* Header Card */}
+        <div className="bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 p-4 sm:p-6 md:p-8">
+          <div className="mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gray-900 dark:bg-gray-100 flex items-center justify-center">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white dark:text-gray-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                  My Todo App
+                </h1>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3 text-sm sm:text-base">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <span className="text-gray-700 dark:text-gray-300 font-medium">
+                  {totalCount > 0
+                    ? `${completedCount} of ${totalCount} completed`
+                    : 'Get things done!'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                <span className="text-lg">✨</span>
+                <span className="text-gray-700 dark:text-gray-300 font-medium">
+                  Auto-breakdown enabled
+                </span>
+              </div>
+              <NotificationSettings />
+            </div>
+          </div>
+
+          <div className="mb-4 sm:mb-6">
+            <AddTodo />
+          </div>
+        </div>
+
+        {/* View Toggle and Content */}
+        <ViewToggle
+          calendarView={<Calendar todos={todosList} />}
+          listView={<TodoList todos={todosWithSubtasks} />}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </div>
     </div>
   );
 }

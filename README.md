@@ -1,36 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Todo App with Supabase
 
-## Getting Started
+A modern, full-featured todo application built with Next.js, React, TypeScript, and Supabase.
 
-First, run the development server:
+## Features
+
+- ✅ Add, edit, and delete todos
+- ✅ Mark todos as complete/incomplete
+- ✅ **Automatic task breakdown** - Tasks are automatically broken down into smaller, time-specific subtasks using Google Gemini AI
+- ✅ Hierarchical display of parent tasks and subtasks
+- ✅ Real-time updates using Supabase subscriptions
+- ✅ Beautiful, responsive UI with dark mode support
+- ✅ Type-safe with TypeScript
+
+## Setup Instructions
+
+### 1. Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Set Up Supabase
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Create a new project at [Supabase](https://supabase.com)
+2. Go to your project settings and copy your:
+   - Project URL
+   - Anon (public) key
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 3. Configure Environment Variables
 
-## Learn More
+1. Copy the example environment file:
+   ```bash
+   cp .env.local.example .env.local
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Edit `.env.local` and add your credentials:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+   - Get Supabase credentials from: https://app.supabase.com/project/_/settings/api
+   - Get Gemini API key from: https://makersuite.google.com/app/apikey
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4. Set Up Database Schema
 
-## Deploy on Vercel
+1. Go to your Supabase project dashboard
+2. Navigate to the SQL Editor
+3. Run the SQL from `supabase-schema.sql` to create the `todos` table with support for parent-child relationships and set up the necessary policies
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Note:** If you already have a `todos` table, you'll need to add the new columns:
+- `parent_id UUID REFERENCES todos(id) ON DELETE CASCADE`
+- `order_index INTEGER DEFAULT 0`
+- `scheduled_time TEXT`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 5. Run the Development Server
+
+```bash
+pnpm dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the app.
+
+## Project Structure
+
+```
+my-app/
+├── app/
+│   ├── page.tsx          # Main todo app page
+│   ├── layout.tsx        # Root layout
+│   └── globals.css       # Global styles
+├── components/
+│   ├── AddTodo.tsx       # Component for adding new todos
+│   ├── TodoItem.tsx      # Individual todo item component
+│   └── TodoList.tsx      # List of todos component
+├── lib/
+│   ├── supabase.ts       # Supabase client configuration
+│   ├── gemini.ts         # Gemini AI client for task breakdown
+│   └── types.ts          # TypeScript type definitions
+└── supabase-schema.sql   # Database schema SQL
+```
+
+## Security Notes
+
+The current setup uses a permissive RLS policy that allows all operations. For production use, you should:
+
+1. Implement user authentication
+2. Update the RLS policies to restrict access based on user IDs
+3. Consider using authenticated Supabase clients
+
+## Technologies Used
+
+- **Next.js 16** - React framework
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Supabase** - Backend and database
+- **Google Gemini AI** - Task breakdown and AI assistance
+- **Tailwind CSS** - Styling
