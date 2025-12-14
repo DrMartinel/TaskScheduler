@@ -59,7 +59,8 @@ export async function addTodoClient(formData: FormData) {
           completed: false,
           parent_id: mainTodo.id,
           order_index: subtask.order_index,
-          scheduled_time: subtask.scheduled_time,
+          start_time: subtask.start_time,
+          end_time: subtask.end_time,
           user_id: user.id
         }));
 
@@ -171,7 +172,6 @@ export async function updateTodoTimeClient(formData: FormData) {
   const id = formData.get('id') as string;
   const startTime = formData.get('start_time') as string | null;
   const endTime = formData.get('end_time') as string | null;
-  const scheduledTime = formData.get('scheduled_time') as string | null;
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -187,16 +187,6 @@ export async function updateTodoTimeClient(formData: FormData) {
     }
     if (endTime !== null) {
       updateData.end_time = endTime ? new Date(endTime).toISOString() : null;
-    }
-    if (scheduledTime !== null) {
-      if (scheduledTime) {
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-        if (!timeRegex.test(scheduledTime)) {
-          console.error('Invalid scheduled_time format:', scheduledTime);
-          return;
-        }
-      }
-      updateData.scheduled_time = scheduledTime || null;
     }
 
     const { error } = await supabase

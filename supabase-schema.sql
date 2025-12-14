@@ -15,9 +15,8 @@ CREATE TABLE IF NOT EXISTS todos (
   completed BOOLEAN DEFAULT FALSE NOT NULL,
   parent_id UUID REFERENCES todos(id) ON DELETE CASCADE,
   order_index INTEGER DEFAULT 0,
-  scheduled_time TEXT, -- Legacy field for subtask time (HH:MM format)
-  start_time TIMESTAMP WITH TIME ZONE, -- Task start date/time
-  end_time TIMESTAMP WITH TIME ZONE, -- Task end date/time
+  start_time TIMESTAMP WITH TIME ZONE, -- Task start date/time (used for both parent tasks and subtasks)
+  end_time TIMESTAMP WITH TIME ZONE, -- Task end date/time (used for both parent tasks and subtasks)
   should_breakdown BOOLEAN DEFAULT TRUE, -- Whether to auto-breakdown into subtasks
   created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -169,4 +168,16 @@ BEGIN
       WHERE parent_id IS NULL;
     RAISE NOTICE 'Created idx_todos_parent_tasks index';
   END IF;
+  
+  -- Add note column if it doesn't exist (for task breakdown context)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'todos' AND column_name = 'note'
+  ) THEN
+    ALTER TABLE todos ADD COLUMN note TEXT;
+    RAISE NOTICE 'Added note column';
+  END IF;
+  
+  -- Note: scheduled_time column is deprecated and can be removed if no longer needed
+  -- Subtasks now use start_time and end_time instead of scheduled_time
 END $$;

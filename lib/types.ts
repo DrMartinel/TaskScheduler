@@ -17,11 +17,12 @@ export interface TodoWithSubtasks extends Todo {
 }
 
 export type TodoInsert = Omit<Todo, 'id' | 'created_at' | 'updated_at'>;
-export type TodoUpdate = Partial<Pick<Todo, 'text' | 'completed' | 'scheduled_time' | 'start_time' | 'end_time'>>;
+export type TodoUpdate = Partial<Pick<Todo, 'text' | 'completed' | 'start_time' | 'end_time'>>;
 
 export interface SubtaskBreakdown {
   text: string;
-  scheduled_time: string;
+  start_time: string; // ISO 8601 format datetime string
+  end_time: string; // ISO 8601 format datetime string
   order_index: number;
 }
 

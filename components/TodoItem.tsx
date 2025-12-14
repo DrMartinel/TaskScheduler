@@ -412,10 +412,29 @@ export default function TodoItem({ todo }: TodoItemProps) {
 
 // Separate component for subtasks
 function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: boolean }) {
+  // Convert Date to datetime-local input format (YYYY-MM-DDTHH:mm)
+  const dateToInputValue = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(subtask.text);
-  const [isEditingTime, setIsEditingTime] = useState(false);
-  const [editTime, setEditTime] = useState(subtask.scheduled_time || '');
+  const [editingTimeField, setEditingTimeField] = useState<'start' | 'end' | null>(null);
+  const [editStartTime, setEditStartTime] = useState(subtask.start_time ? dateToInputValue(new Date(subtask.start_time)) : '');
+  const [editEndTime, setEditEndTime] = useState(subtask.end_time ? dateToInputValue(new Date(subtask.end_time)) : '');
   const [isPending, startTransition] = useTransition();
 
   const handleToggle = (checked: CheckedState) => {
@@ -467,35 +486,68 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
     }
   };
 
-  const handleTimeEdit = () => {
-    setEditTime(subtask.scheduled_time || '');
-    setIsEditingTime(true);
+  const handleStartTimeEdit = () => {
+    if (subtask.start_time) {
+      setEditStartTime(dateToInputValue(new Date(subtask.start_time)));
+    }
+    setEditingTimeField('start');
   };
 
-  const handleTimeSave = () => {
+  const handleEndTimeEdit = () => {
+    if (subtask.end_time) {
+      setEditEndTime(dateToInputValue(new Date(subtask.end_time)));
+    }
+    setEditingTimeField('end');
+  };
+
+  const handleTimeSave = (field: 'start' | 'end') => {
     if (isPending) {
-      setIsEditingTime(false);
+      setEditingTimeField(null);
       return;
     }
 
     const formData = new FormData();
     formData.append('id', subtask.id);
-    formData.append('scheduled_time', editTime.trim() || '');
+
+    if (field === 'start') {
+      const startTimeISO = editStartTime ? new Date(editStartTime).toISOString() : null;
+      if (startTimeISO) {
+        formData.append('start_time', startTimeISO);
+      } else {
+        formData.append('start_time', ''); // Empty string to clear the field
+      }
+      // Don't include end_time - the server will preserve the existing value
+    } else {
+      const endTimeISO = editEndTime ? new Date(editEndTime).toISOString() : null;
+      if (endTimeISO) {
+        formData.append('end_time', endTimeISO);
+      } else {
+        formData.append('end_time', ''); // Empty string to clear the field
+      }
+      // Don't include start_time - the server will preserve the existing value
+    }
 
     startTransition(async () => {
       await updateTodoTime(formData);
-      setIsEditingTime(false);
+      setEditingTimeField(null);
     });
   };
 
-  const handleTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, field: 'start' | 'end') => {
     if (e.key === 'Enter') {
-      handleTimeSave();
+      handleTimeSave(field);
     } else if (e.key === 'Escape') {
-      setIsEditingTime(false);
-      setEditTime(subtask.scheduled_time || '');
+      setEditingTimeField(null);
+      if (field === 'start' && subtask.start_time) {
+        setEditStartTime(dateToInputValue(new Date(subtask.start_time)));
+      } else if (field === 'end' && subtask.end_time) {
+        setEditEndTime(dateToInputValue(new Date(subtask.end_time)));
+      }
     }
   };
+
+  const subtaskStart = subtask.start_time ? new Date(subtask.start_time) : null;
+  const subtaskEnd = subtask.end_time ? new Date(subtask.end_time) : null;
 
   return (
     <div className="flex items-center gap-1.5 sm:gap-2 py-1">
@@ -506,16 +558,32 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
         className="w-4 h-4 sm:w-5 sm:h-5"
       />
       
-      {isEditingTime ? (
+      {editingTimeField === 'start' ? (
         <Input
-          type="time"
-          value={editTime}
-          onChange={(e) => setEditTime(e.target.value)}
-          onBlur={handleTimeSave}
-          onKeyDown={handleTimeKeyDown}
+          type="datetime-local"
+          value={editStartTime}
+          onChange={(e) => setEditStartTime(e.target.value)}
+          onBlur={() => handleTimeSave('start')}
+          onKeyDown={(e) => handleTimeKeyDown(e, 'start')}
           autoFocus
           disabled={isPending}
-          className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] flex-shrink-0 h-6 ${
+          className={`text-xs font-mono w-[10rem] sm:w-[11rem] max-w-[10rem] sm:max-w-[11rem] flex-shrink-0 h-6 ${
+            hasTimeInfo 
+              ? 'text-white bg-white/20 border-white/30 placeholder-white/70' 
+              : 'text-gray-900 dark:text-gray-100'
+          }`}
+          style={{ fontSize: '12px' }}
+        />
+      ) : editingTimeField === 'end' ? (
+        <Input
+          type="datetime-local"
+          value={editEndTime}
+          onChange={(e) => setEditEndTime(e.target.value)}
+          onBlur={() => handleTimeSave('end')}
+          onKeyDown={(e) => handleTimeKeyDown(e, 'end')}
+          autoFocus
+          disabled={isPending}
+          className={`text-xs font-mono w-[10rem] sm:w-[11rem] max-w-[10rem] sm:max-w-[11rem] flex-shrink-0 h-6 ${
             hasTimeInfo 
               ? 'text-white bg-white/20 border-white/30 placeholder-white/70' 
               : 'text-gray-900 dark:text-gray-100'
@@ -523,15 +591,31 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
           style={{ fontSize: '12px' }}
         />
       ) : (
-        <span
-          onClick={handleTimeEdit}
-          className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] flex-shrink-0 cursor-pointer hover:bg-white/10 px-1 py-0.5 rounded transition-colors ${
-            hasTimeInfo ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
-          }`}
-          title={subtask.scheduled_time ? "Click to edit time" : "Click to add time"}
-        >
-          {subtask.scheduled_time || '--:--'}
-        </span>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <span
+            onClick={handleStartTimeEdit}
+            className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] cursor-pointer hover:bg-white/10 px-1 py-0.5 rounded transition-colors ${
+              hasTimeInfo ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
+            }`}
+            title={subtaskStart ? "Click to edit start time" : "Click to add start time"}
+          >
+            {subtaskStart ? formatTime(subtaskStart) : '--:--'}
+          </span>
+          {subtaskEnd && (
+            <>
+              <span className={`text-xs ${hasTimeInfo ? 'text-white/50' : 'text-gray-400'}`}>-</span>
+              <span
+                onClick={handleEndTimeEdit}
+                className={`text-xs font-mono min-w-[3rem] sm:min-w-[3.5rem] cursor-pointer hover:bg-white/10 px-1 py-0.5 rounded transition-colors ${
+                  hasTimeInfo ? 'text-white/70' : 'text-gray-500 dark:text-gray-400'
+                }`}
+                title="Click to edit end time"
+              >
+                {formatTime(subtaskEnd)}
+              </span>
+            </>
+          )}
+        </div>
       )}
       
       {isEditing ? (

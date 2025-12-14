@@ -11,10 +11,10 @@ interface TodoListProps {
 type FilterType = 'all' | 'today' | 'pending' | 'completed';
 
 export default function TodoList({ todos }: TodoListProps) {
-  const [filter, setFilter] = useState<FilterType>('today');
+  const [filter, setFilter] = useState<FilterType>('all');
 
-  // Filter todos based on selected filter
-  const filteredTodos = useMemo(() => {
+  // Filter and group todos by date
+  const groupedTodos = useMemo(() => {
     let filtered = [...todos];
 
     switch (filter) {
@@ -43,15 +43,80 @@ export default function TodoList({ todos }: TodoListProps) {
         break;
     }
 
-    // Sort todos by start_time if available, otherwise by created_at
-    return filtered.sort((a, b) => {
-      if (a.start_time && b.start_time) {
-        return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+    // Group by date
+    const grouped = new Map<string, TodoWithSubtasks[]>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    filtered.forEach(todo => {
+      let dateKey: string;
+      let dateForSorting: Date;
+      
+      if (todo.start_time) {
+        const taskDate = new Date(todo.start_time);
+        taskDate.setHours(0, 0, 0, 0);
+        dateForSorting = taskDate;
+        
+        // Format date key
+        const dayDiff = Math.floor((taskDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        if (dayDiff === 0) {
+          dateKey = 'Today';
+        } else if (dayDiff === 1) {
+          dateKey = 'Tomorrow';
+        } else if (dayDiff === -1) {
+          dateKey = 'Yesterday';
+        } else if (dayDiff > 1 && dayDiff <= 7) {
+          dateKey = taskDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        } else {
+          dateKey = taskDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+        }
+      } else {
+        // Tasks without start_time go to "No date"
+        const createdDate = new Date(todo.created_at);
+        createdDate.setHours(0, 0, 0, 0);
+        dateForSorting = createdDate;
+        dateKey = 'No date';
       }
-      if (a.start_time) return -1;
-      if (b.start_time) return 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      
+      if (!grouped.has(dateKey)) {
+        grouped.set(dateKey, []);
+      }
+      grouped.get(dateKey)!.push(todo);
     });
+
+    // Sort todos within each group
+    grouped.forEach((tasks, dateKey) => {
+      tasks.sort((a, b) => {
+        if (a.start_time && b.start_time) {
+          return new Date(a.start_time).getTime() - new Date(b.start_time).getTime();
+        }
+        if (a.start_time) return -1;
+        if (b.start_time) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+    });
+
+    // Convert to array and sort by date (closest first)
+    const sortedGroups = Array.from(grouped.entries()).sort(([dateKeyA, tasksA], [dateKeyB, tasksB]) => {
+      // Get the earliest date from each group for sorting
+      const getEarliestDate = (tasks: TodoWithSubtasks[]): Date => {
+        const dates = tasks
+          .map(t => t.start_time ? new Date(t.start_time) : new Date(t.created_at))
+          .filter(d => !isNaN(d.getTime()));
+        return dates.length > 0 ? new Date(Math.min(...dates.map(d => d.getTime()))) : new Date();
+      };
+      
+      const dateA = getEarliestDate(tasksA);
+      const dateB = getEarliestDate(tasksB);
+      
+      // Special handling for "No date" - put it at the end
+      if (dateKeyA === 'No date') return 1;
+      if (dateKeyB === 'No date') return -1;
+      
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    return sortedGroups;
   }, [todos, filter]);
 
   if (todos.length === 0) {
@@ -115,7 +180,7 @@ export default function TodoList({ todos }: TodoListProps) {
       </div>
 
       {/* Filtered Todos List */}
-      {filteredTodos.length === 0 ? (
+      {groupedTodos.length === 0 ? (
         <div className="text-center py-16 px-4">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
             <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,9 +195,21 @@ export default function TodoList({ todos }: TodoListProps) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3 sm:space-y-4 px-4 pb-4">
-          {filteredTodos.map((todo) => (
-            <TodoItem key={todo.id} todo={todo} />
+        <div className="space-y-6 px-4 pb-4">
+          {groupedTodos.map(([dateKey, tasks]) => (
+            <div key={dateKey} className="space-y-3 sm:space-y-4">
+              {/* Date Header */}
+              <div className="sticky top-0 z-30 bg-gray-50 dark:bg-gray-950 py-2 -mx-4 px-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  {dateKey}
+                </h3>
+              </div>
+              
+              {/* Tasks for this date */}
+              {tasks.map((todo) => (
+                <TodoItem key={todo.id} todo={todo} />
+              ))}
+            </div>
           ))}
         </div>
       )}

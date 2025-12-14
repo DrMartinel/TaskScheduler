@@ -51,7 +51,7 @@ export default function TaskNotifications() {
       try {
         const now = new Date();
 
-        // Fetch all incomplete tasks (both parent tasks with start_time and subtasks with scheduled_time)
+        // Fetch all incomplete tasks (both parent tasks and subtasks with start_time)
         const { data: todos, error } = await supabase
           .from('todos')
           .select('*')
@@ -78,42 +78,9 @@ export default function TaskNotifications() {
           let taskStartTime: Date | null = null;
           let taskId = todo.id;
 
-          // For parent tasks with start_time
+          // For tasks with start_time (both parent tasks and subtasks)
           if (todo.start_time) {
             taskStartTime = new Date(todo.start_time);
-          }
-          // For subtasks with scheduled_time
-          else if (todo.parent_id && todo.scheduled_time) {
-            const parent = parentMap.get(todo.parent_id);
-            let baseDate: Date;
-            
-            if (parent?.start_time) {
-              // Use parent's date
-              baseDate = new Date(parent.start_time);
-            } else {
-              // Use today's date
-              baseDate = new Date(now);
-              baseDate.setHours(0, 0, 0, 0);
-            }
-            
-            // Parse scheduled_time (HH:MM format)
-            const timeParts = todo.scheduled_time.split(':');
-            if (timeParts.length >= 2) {
-              const hours = parseInt(timeParts[0], 10);
-              const minutes = parseInt(timeParts[1], 10);
-              
-              if (!isNaN(hours) && !isNaN(minutes) && hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
-                // Set the time on the base date
-                baseDate.setHours(hours, minutes, 0, 0);
-                taskStartTime = baseDate;
-                
-                // If the time has already passed today and we're using today's date, try tomorrow
-                if (!parent?.start_time && taskStartTime.getTime() < now.getTime()) {
-                  baseDate.setDate(baseDate.getDate() + 1);
-                  taskStartTime = baseDate;
-                }
-              }
-            }
           }
 
           if (!taskStartTime) return;

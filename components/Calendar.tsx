@@ -102,7 +102,7 @@ export default function Calendar({ todos }: CalendarProps) {
 
   // Filter tasks within the date range
   const tasksInRange = tasksWithTime.filter(todo => {
-    // All tasks in tasksWithTime should have start_time now (we convert scheduled_time to start_time)
+    // All tasks in tasksWithTime should have start_time
     const taskStart = todo.start_time ? new Date(todo.start_time) : null;
     const taskEnd = todo.end_time ? new Date(todo.end_time) : null;
 
@@ -226,118 +226,127 @@ export default function Calendar({ todos }: CalendarProps) {
 
   return (
     <div className="space-y-4">
-      {/* Header Controls */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode('day')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              viewMode === 'day'
-                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-md'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            Day
-          </button>
-          <button
-            onClick={() => setViewMode('week')}
-            className={`px-3 sm:px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              viewMode === 'week'
-                ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 shadow-md'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-            }`}
-          >
-            Week
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToToday}
-            className="px-3 sm:px-4 py-2 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-all shadow-md"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => navigateDate('prev')}
-            className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Previous"
-          >
-            <svg className="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <button
-            onClick={() => navigateDate('next')}
-            className="p-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Next"
-          >
-            <svg className="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      {/* Date Display */}
-      <div className="text-center">
-        <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
-          {viewMode === 'day' 
-            ? formatDate(currentDate)
-            : `${formatDate(start)} - ${formatDate(end)}`
-          }
-        </h2>
-      </div>
-
-      {/* Week Header for Week View */}
-      {viewMode === 'week' && (
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-3 sm:p-4 mb-4">
-          <div className="grid grid-cols-7 gap-2">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
-              const weekDay = weekDays[idx];
-              const isToday = weekDay && weekDay.toDateString() === new Date().toDateString();
-              const isWeekend = day === 'Sat' || day === 'Sun';
-              return (
-                <div 
-                  key={day} 
-                  className={`text-center p-2 rounded-lg transition-colors ${
-                    isToday 
-                      ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-blue-400' 
-                      : isWeekend
-                      ? 'bg-gray-50 dark:bg-gray-800/50'
-                      : 'bg-transparent'
-                  }`}
-                >
-                  <div className={`text-xs sm:text-sm font-semibold mb-1 ${
-                    isToday
-                      ? 'text-blue-700 dark:text-blue-300'
-                      : isWeekend
-                      ? 'text-gray-500 dark:text-gray-400'
-                      : 'text-gray-600 dark:text-gray-300'
-                  }`}>
-                    {day}
-                  </div>
-                  <div className={`text-base sm:text-lg font-bold ${
-                    isToday
-                      ? 'text-blue-900 dark:text-blue-200'
-                      : 'text-gray-900 dark:text-white'
-                  }`}>
-                    {weekDay ? weekDay.getDate() : ''}
-                  </div>
-                  {weekDay && (
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
-                      {weekDay.toLocaleDateString('en-US', { month: 'short' })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {/* Sticky Header Section */}
+      <div className="sticky top-0 z-40 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm">
+        <div className="px-4 sm:px-6 py-4">
+          {/* Date Display - Prominent at top */}
+          <div className="mb-4">
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              {viewMode === 'day' 
+                ? formatDate(currentDate)
+                : `${formatDate(start)} - ${formatDate(end)}`
+              }
+            </h2>
           </div>
-        </div>
-      )}
 
-      {/* Timeline View */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg overflow-visible">
+          {/* Controls Row */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+            <button
+              onClick={() => setViewMode('day')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                viewMode === 'day'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Day
+            </button>
+            <button
+              onClick={() => setViewMode('week')}
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                viewMode === 'week'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Week
+            </button>
+          </div>
+
+          {/* Navigation Controls */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={goToToday}
+              className="px-4 py-1.5 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-lg text-sm font-medium hover:bg-gray-800 dark:hover:bg-gray-200 transition-all"
+            >
+              Today
+            </button>
+            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+              <button
+                onClick={() => navigateDate('prev')}
+                className="p-1.5 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+                aria-label="Previous"
+              >
+                <svg className="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={() => navigateDate('next')}
+                className="p-1.5 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+                aria-label="Next"
+              >
+                <svg className="h-5 w-5 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          </div>
+
+          {/* Week Header for Week View */}
+          {viewMode === 'week' && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <div className="grid grid-cols-7 gap-2">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => {
+                const weekDay = weekDays[idx];
+                const isToday = weekDay && weekDay.toDateString() === new Date().toDateString();
+                const isWeekend = day === 'Sat' || day === 'Sun';
+                return (
+                  <div 
+                    key={day} 
+                    className={`text-center p-2 rounded-lg transition-colors ${
+                      isToday 
+                        ? 'bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500 dark:border-blue-400' 
+                        : isWeekend
+                        ? 'bg-gray-50 dark:bg-gray-800/50'
+                        : 'bg-transparent'
+                    }`}
+                  >
+                    <div className={`text-xs sm:text-sm font-semibold mb-1 ${
+                      isToday
+                        ? 'text-blue-700 dark:text-blue-300'
+                        : isWeekend
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : 'text-gray-600 dark:text-gray-300'
+                    }`}>
+                      {day}
+                    </div>
+                    <div className={`text-base sm:text-lg font-bold ${
+                      isToday
+                        ? 'text-blue-900 dark:text-blue-200'
+                        : 'text-gray-900 dark:text-white'
+                    }`}>
+                      {weekDay ? weekDay.getDate() : ''}
+                    </div>
+                    {weekDay && (
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                        {weekDay.toLocaleDateString('en-US', { month: 'short' })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Timeline View - Scrollable */}
+      <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-lg overflow-visible max-h-[calc(100vh-300px)] overflow-y-auto hide-scrollbar">
         <div className="relative overflow-visible">
           {viewMode === 'day' ? (
             /* Day View Layout */
@@ -674,9 +683,10 @@ export default function Calendar({ todos }: CalendarProps) {
                                 <div className={`text-sm ${subtask.completed ? 'line-through opacity-60' : 'font-medium'} text-gray-900 dark:text-white`}>
                                   {subtask.text}
                                 </div>
-                                {subtask.scheduled_time && (
+                                {subtask.start_time && (
                                   <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Scheduled: {subtask.scheduled_time}
+                                    {formatTime(new Date(subtask.start_time))}
+                                    {subtask.end_time && ` - ${formatTime(new Date(subtask.end_time))}`}
                                   </div>
                                 )}
                               </div>
