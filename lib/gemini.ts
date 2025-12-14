@@ -102,7 +102,13 @@ export async function breakDownTask(
         hour12: false,
         timeZoneName: 'short'
       });
-      timeContext = `\n\nTask Schedule (Timezone: ${timezoneName} ${timezoneOffset}):\n- Start: ${startFormatted}\n- End: ${endFormatted}\n\nIMPORTANT: All times are in ${timezoneName} (${timezoneOffset}). When creating subtasks, use the same timezone. Break down the task to fit within this time range.`;
+      timeContext = `\n\nTask Execution Time (Timezone: ${timezoneName} ${timezoneOffset}):\n- Start: ${startFormatted} (when user MUST START doing the task)\n- End: ${endFormatted} (when user MUST FINISH/COMPLETE the main task)\n\nCRITICAL RULES:
+1. The start_time is when the user MUST START doing the task
+2. The end_time is when the user MUST FINISH/COMPLETE the main task
+3. Generate PREPARATION subtasks that occur BEFORE the start_time (waking up, getting ready, traveling, etc.)
+4. The main task execution subtasks should fit within start_time to end_time
+5. DO NOT include any subtasks AFTER the end_time (no "pack up", "go home", "prepare to leave", etc.) - after end_time, the user can do other things independently
+6. All times are in ${timezoneName} (${timezoneOffset}).`;
     } else if (startTime) {
       const start = new Date(startTime);
       const startFormatted = start.toLocaleString('en-US', { 
@@ -114,7 +120,11 @@ export async function breakDownTask(
         hour12: false,
         timeZoneName: 'short'
       });
-      timeContext = `\n\nTask Start Time (Timezone: ${timezoneName} ${timezoneOffset}): ${startFormatted}\n\nIMPORTANT: All times are in ${timezoneName} (${timezoneOffset}). When creating subtasks, use the same timezone. Break down the task starting from this time.`;
+      timeContext = `\n\nTask Execution Time (Timezone: ${timezoneName} ${timezoneOffset}): ${startFormatted} (when user MUST START doing the task)\n\nCRITICAL RULES:
+1. The start_time is when the user MUST START doing the task
+2. Generate PREPARATION subtasks that occur BEFORE the start_time (waking up, getting ready, traveling, etc.)
+3. The main task execution subtasks should start from the start_time
+4. All times are in ${timezoneName} (${timezoneOffset}).`;
     } else if (endTime) {
       const end = new Date(endTime);
       const endFormatted = end.toLocaleString('en-US', { 
@@ -126,7 +136,12 @@ export async function breakDownTask(
         hour12: false,
         timeZoneName: 'short'
       });
-      timeContext = `\n\nTask End Time (Timezone: ${timezoneName} ${timezoneOffset}): ${endFormatted}\n\nIMPORTANT: All times are in ${timezoneName} (${timezoneOffset}). When creating subtasks, use the same timezone. Break down the task working backwards from this end time.`;
+      timeContext = `\n\nTask End Time (Timezone: ${timezoneName} ${timezoneOffset}): ${endFormatted} (when user MUST FINISH/COMPLETE the main task)\n\nCRITICAL RULES:
+1. The end_time is when the user MUST FINISH/COMPLETE the main task
+2. Generate PREPARATION subtasks that occur BEFORE the task execution (waking up, getting ready, traveling, etc.)
+3. The main task execution subtasks should end at the end_time
+4. DO NOT include any subtasks AFTER the end_time (no "pack up", "go home", "prepare to leave", etc.)
+5. All times are in ${timezoneName} (${timezoneOffset}).`;
     }
 
     // Add note context if provided
@@ -151,6 +166,15 @@ export async function breakDownTask(
 
 Task: "${taskText}"${timeContext}${noteContext}
 
+CRITICAL UNDERSTANDING:
+- The start_time is when the user MUST START doing the task
+- The end_time is when the user MUST FINISH/COMPLETE the main task
+- Your job is to generate subtasks that help the user be WELL-PREPARED for this execution time
+- You MUST include PREPARATION subtasks that occur BEFORE the start_time
+- Preparation subtasks ensure the user is ready when the execution time arrives
+- Examples of preparation: waking up, personal hygiene, getting dressed, preparing materials, traveling to location, etc.
+- DO NOT include any subtasks AFTER the end_time (no "pack up", "go home", "prepare to leave", etc.) - after end_time, the user can do other things independently
+
 IMPORTANT: Break down the task into meaningful actions that a person would naturally think of. Focus on substantial activities, not micro-actions. Avoid breaking down into tiny steps like "open eyes", "rinse hands", "turn on light" - these are too granular. Instead, group related actions into meaningful steps.
 
 DO NOT include micro-actions like:
@@ -167,7 +191,8 @@ Return a JSON object with a "subtasks" array. Each subtask must have:
 
 IMPORTANT: The base date for all subtasks is ${baseDateStr}. All times should be on this date (or the next day if the task spans multiple days).
 
-Example response format for "Class at University" (06:45 - 11:45):
+Example response format for "Class at University" (execution time: 06:45 - 11:45):
+Notice how preparation subtasks occur BEFORE the execution start time (06:45), and the last subtask ends at the end_time (11:45):
 {
   "subtasks": [
     {"text": "Wake up", "start_time": "${baseDateStr}T05:30:00", "end_time": "${baseDateStr}T05:35:00", "order_index": 1},
@@ -179,26 +204,40 @@ Example response format for "Class at University" (06:45 - 11:45):
     {"text": "Arrive and Settle for First Class", "start_time": "${baseDateStr}T06:45:00", "end_time": "${baseDateStr}T06:55:00", "order_index": 7},
     {"text": "Attend First Class", "start_time": "${baseDateStr}T06:55:00", "end_time": "${baseDateStr}T08:55:00", "order_index": 8},
     {"text": "Break between Classes", "start_time": "${baseDateStr}T08:55:00", "end_time": "${baseDateStr}T09:15:00", "order_index": 9},
-    {"text": "Attend Second Class", "start_time": "${baseDateStr}T09:15:00", "end_time": "${baseDateStr}T11:15:00", "order_index": 10},
-    {"text": "Wrap up and Prepare to Depart", "start_time": "${baseDateStr}T11:15:00", "end_time": "${baseDateStr}T11:45:00", "order_index": 11}
+    {"text": "Attend Second Class", "start_time": "${baseDateStr}T09:15:00", "end_time": "${baseDateStr}T11:45:00", "order_index": 10}
   ]
 }
+Note: 
+- Subtasks 1-6 are PREPARATION steps that occur BEFORE the execution start time (06:45)
+- The last subtask ends at the end_time (11:45) - this is when the main task is completed
+- NO subtasks occur AFTER 11:45 (no "pack up", "go home", etc.) - after end_time, the user can do other things independently
 
 CRITICAL INSTRUCTIONS:
-1. Follow the example above - break down tasks into meaningful, substantial actions with realistic time durations
-2. Each subtask should represent a complete, logical activity (e.g., "Personal Hygiene" can include brushing teeth and washing face together)
-3. Group related actions naturally (e.g., "Prepare and Have Breakfast" combines preparation and eating)
-4. DO NOT break down into micro-actions like "open", "close", "pick up", "put down" - these are implied in the main action
-5. Use realistic durations: 5-10 minutes for quick tasks, 15-30 minutes for meals, 30-120 minutes for classes/activities, etc.
-6. All start_time and end_time values must be in ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
-7. All times must be in the same timezone as the task schedule (${timezoneName} ${timezoneOffset})
-8. Times must be realistic, sequential, and fit within the provided time range if specified
-9. The end_time of one subtask should be close to or equal to the start_time of the next subtask (no gaps unless intentional)
-10. Consider any notes provided when creating the breakdown (e.g., travel time, special requirements)
-11. Do NOT convert times to a different timezone - use the exact timezone provided
-12. If the parent task spans multiple days, subtasks can span to the next day (use the appropriate date)
-13. Aim for 5-15 subtasks for most tasks - focus on quality meaningful steps, not quantity
-14. Use clear, specific descriptions like "Wake up", "Personal Hygiene", "Get Dressed", "Prepare and Have Breakfast", "Travel to University", "Attend First Class"`;
+1. **PREPARATION FIRST**: Always include preparation subtasks that occur BEFORE the task execution start_time. The user's start_time is when they MUST START doing the task - you need to help them prepare for it.
+2. **PREPARATION EXAMPLES**: Include subtasks like waking up, personal hygiene, getting dressed, preparing materials, traveling to location, etc. - all BEFORE the execution start_time.
+3. **END TIME IS COMPLETION**: The end_time is when the user MUST FINISH/COMPLETE the main task. The last subtask should end at or before the end_time.
+4. **NO POST-TASK ACTIVITIES**: DO NOT include any subtasks AFTER the end_time. No "pack up", "go home", "prepare to leave", "wrap up", etc. After end_time, the user can do other things independently.
+5. Follow the example above - break down tasks into meaningful, substantial actions with realistic time durations
+6. Each subtask should represent a complete, logical activity (e.g., "Personal Hygiene" can include brushing teeth and washing face together)
+7. Group related actions naturally (e.g., "Prepare and Have Breakfast" combines preparation and eating)
+8. DO NOT break down into micro-actions like "open", "close", "pick up", "put down" - these are implied in the main action
+9. Use realistic durations: 5-10 minutes for quick tasks, 15-30 minutes for meals, 30-120 minutes for classes/activities, etc.
+10. All start_time and end_time values must be in ISO 8601 format (YYYY-MM-DDTHH:mm:ss)
+11. All times must be in the same timezone as the task schedule (${timezoneName} ${timezoneOffset})
+12. Times must be realistic, sequential, and ensure preparation is complete BEFORE the execution start_time
+13. The end_time of one subtask should be close to or equal to the start_time of the next subtask (no gaps unless intentional)
+14. The last subtask's end_time should be at or before the task's end_time
+15. Consider any notes provided when creating the breakdown (e.g., travel time, special requirements)
+16. Do NOT convert times to a different timezone - use the exact timezone provided
+17. If the parent task spans multiple days, subtasks can span to the next day (use the appropriate date)
+18. Aim for 5-15 subtasks for most tasks - focus on quality meaningful steps, not quantity
+19. Use clear, specific descriptions like "Wake up", "Personal Hygiene", "Get Dressed", "Prepare and Have Breakfast", "Travel to University", "Attend First Class"
+20. **REMEMBER**: 
+    - start_time = when user MUST START doing the task
+    - end_time = when user MUST FINISH/COMPLETE the main task
+    - Include preparation BEFORE start_time
+    - End all subtasks at or before end_time
+    - NO activities after end_time`;
 
     console.log('[Gemini] Sending request to Gemini...');
     
