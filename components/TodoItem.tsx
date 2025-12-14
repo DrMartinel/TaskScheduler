@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import type { CheckedState } from '@radix-ui/react-checkbox';
 import { TodoWithSubtasks } from '@/lib/types';
 import { toggleTodo, deleteTodo, updateTodo } from '@/lib/actions';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -48,7 +49,7 @@ export default function TodoItem({ todo }: TodoItemProps) {
 
   const duration = getDuration();
 
-  const handleToggle = async (checked?: boolean) => {
+  const handleToggle = (checked: CheckedState) => {
     if (isPending) return;
     
     const formData = new FormData();
@@ -279,7 +280,7 @@ function SubtaskItem({ subtask, hasTimeInfo }: { subtask: any; hasTimeInfo: bool
   const [editText, setEditText] = useState(subtask.text);
   const [isPending, startTransition] = useTransition();
 
-  const handleToggle = async (checked?: boolean) => {
+  const handleToggle = (checked: CheckedState) => {
     if (isPending) return;
     
     const formData = new FormData();
